@@ -1,0 +1,8 @@
+.cache/
+.github/
+.vscode/
+*.log
+*.csv
+*.json
+folderacls*/
+run-*/
