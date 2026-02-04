@@ -16,13 +16,13 @@
     {
       "id": "AdminsPresent",
       "description": "Administrative groups present with elevated permissions",
-      "identity_patterns": ["Administrators", "Domain Admins", "BUILTIN\\\\Administrators", "Admins"],
+      "identity_patterns": ["Administrators", "Domain Admins", "BUILTIN\\\\Administrators", "Admins", "S-1-22-1-0", "NT AUTHORITY\\\\SYSTEM", "S-1-5-18"],
       "perm_match": "(?i)full|fullcontrol"
     },
     {
       "id": "AdminsMissing",
       "description": "Metadata rule: expected admin identities for presence checks (requires a presence check)",
-      "identity_patterns": ["Administrators", "Domain Admins", "BUILTIN\\\\Administrators", "Admins"],
+      "identity_patterns": ["Administrators", "Domain Admins", "BUILTIN\\\\Administrators", "Admins", "S-1-22-1-0", "NT AUTHORITY\\\\SYSTEM", "S-1-5-18"],
       "expect_presence": true
     }
   ]
