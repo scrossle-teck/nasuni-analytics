@@ -18,6 +18,7 @@ param(
     [Parameter(Mandatory = $true)][string]$RunPath,
     [Parameter(Mandatory = $true)][string]$Identity,
     [string]$OutPath = "results/accessible-by.csv",
+    [string]$Ruleset = (Join-Path $PSScriptRoot 'ruleset.json'),
     [switch]$IncludeInherited
 )
 
@@ -39,24 +40,62 @@ function Find-AclNodes([object]$node) {
 
 $results = [System.Collections.Generic.List[object]]::new()
 
+# Load ruleset if provided (allows using a rule id as the -Identity parameter)
+$rules = $null
+if ($Ruleset -and (Test-Path $Ruleset)) {
+    try { $rules = Get-Content -Raw -Path $Ruleset | ConvertFrom-Json -Depth 5 }
+    catch { Write-Warning "Failed to read ruleset $Ruleset: $_"; $rules = $null }
+}
+
 foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
     try { $json = Get-Content -Raw -Path $f.FullName | ConvertFrom-Json -Depth 10 }
     catch { Write-Warning "Failed to parse $($f.FullName): $_"; continue }
 
+    Write-Output "Parsed JSON properties: $($json.PSObject.Properties.Name -join ',')"
+
     # Prefer top-level 'acl' if present
-    if ($json -is [System.Collections.IDictionary] -and $json.PSObject.Properties.Name -contains 'acl' -and ($json.acl -is [System.Collections.IEnumerable])) {
+    if ($json.PSObject.Properties.Name -contains 'acl' -and ($json.acl -is [System.Collections.IEnumerable])) {
+        Write-Output "Found top-level ACL in $($f.FullName)"
         $aclList = $json.acl
-        $folderPath = $json.path -or $json.folder -or $json.name
+        $folderPath = $null
+        if ($json.PSObject.Properties.Name -contains 'path') { $folderPath = $json.path }
+        if (-not $folderPath -and ($json.PSObject.Properties.Name -contains 'folder')) { $folderPath = $json.folder }
+        if (-not $folderPath -and ($json.PSObject.Properties.Name -contains 'name')) { $folderPath = $json.name }
         if (-not $folderPath) { $folderPath = $f.FullName }
 
         foreach ($ace in $aclList) {
             $aceObj = $ace
-            $aceName = if ($aceObj -is [System.Collections.IDictionary]) { $aceObj.name -or $aceObj.displayName -or $aceObj.identity -or '' } else { '' }
-            $aceSid = if ($aceObj -is [System.Collections.IDictionary]) { $aceObj.sid -or '' } else { '' }
+            $aceName = ''
+            if ($aceObj -is [System.Management.Automation.PSObject] -or $aceObj -is [System.Collections.IDictionary]) {
+                if ($aceObj.PSObject.Properties.Name -contains 'name') { $aceName = $aceObj.name }
+                if (-not $aceName -and ($aceObj.PSObject.Properties.Name -contains 'displayName')) { $aceName = $aceObj.displayName }
+                if (-not $aceName -and ($aceObj.PSObject.Properties.Name -contains 'identity')) { $aceName = $aceObj.identity }
+                if (-not $aceName -and ($aceObj.PSObject.Properties.Name -contains 'sid')) { $aceName = $aceObj.sid }
+            }
+
+            $aceSid = ''
+            if ($aceObj -is [System.Management.Automation.PSObject] -or $aceObj -is [System.Collections.IDictionary]) {
+                if ($aceObj.PSObject.Properties.Name -contains 'sid') { $aceSid = $aceObj.sid }
+            }
             $aceInherited = if ($aceObj -is [System.Collections.IDictionary]) { $aceObj.inherited -eq $true } else { $false }
             if ($aceInherited -and -not $IncludeInherited) { continue }
 
-            if (($aceName -and ($aceName -like "*${Identity}*")) -or ($aceSid -and ($aceSid -like "*${Identity}*"))) {
+            # Determine identity patterns: if Identity matches a rule id, use its identity_patterns
+            $identityPatterns = @()
+            if ($rules -and $rules.rules) {
+                $matchedRule = $rules.rules | Where-Object { $_.id -ieq $Identity }
+                if ($matchedRule) { $identityPatterns = @($matchedRule.identity_patterns) }
+            }
+            if ($identityPatterns.Count -eq 0) { $identityPatterns = @($Identity) }
+
+            $matched = $false
+            foreach ($pat in $identityPatterns) {
+                if ($aceName -and ($aceName -like "*$pat*")) { $matched = $true; break }
+                if ($aceSid -and ($aceSid -like "*$pat*")) { $matched = $true; break }
+            }
+
+            if ($matched) {
+                Write-Output "Matched identity ACE: $aceName on $folderPath"
                 $results.Add([PSCustomObject]@{
                         source_file   = $f.FullName
                         folder_path   = $folderPath
@@ -83,7 +122,21 @@ foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
             $aceInherited = if ($aceObj -is [System.Collections.IDictionary]) { $aceObj.inherited -eq $true } else { $false }
             if ($aceInherited -and -not $IncludeInherited) { continue }
 
-            if (($aceName -and ($aceName -like "*${Identity}*")) -or ($aceSid -and ($aceSid -like "*${Identity}*"))) {
+            # Determine identity patterns: support rule ids
+            $identityPatterns = @()
+            if ($rules -and $rules.rules) {
+                $matchedRule = $rules.rules | Where-Object { $_.id -ieq $Identity }
+                if ($matchedRule) { $identityPatterns = @($matchedRule.identity_patterns) }
+            }
+            if ($identityPatterns.Count -eq 0) { $identityPatterns = @($Identity) }
+
+            $matched = $false
+            foreach ($pat in $identityPatterns) {
+                if ($aceName -and ($aceName -like "*$pat*")) { $matched = $true; break }
+                if ($aceSid -and ($aceSid -like "*$pat*")) { $matched = $true; break }
+            }
+
+            if ($matched) {
                 $results.Add([PSCustomObject]@{
                         source_file   = $f.FullName
                         folder_path   = $folderPath

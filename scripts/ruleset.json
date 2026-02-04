@@ -12,5 +12,18 @@
       "identity_patterns": ["Everyone"],
       "perm_match": "(?i)modify|write|full"
     }
+    ,
+    {
+      "id": "AdminsPresent",
+      "description": "Administrative groups present with elevated permissions",
+      "identity_patterns": ["Administrators", "Domain Admins", "BUILTIN\\\\Administrators", "Admins"],
+      "perm_match": "(?i)full|fullcontrol"
+    },
+    {
+      "id": "AdminsMissing",
+      "description": "Metadata rule: expected admin identities for presence checks (requires a presence check)",
+      "identity_patterns": ["Administrators", "Domain Admins", "BUILTIN\\\\Administrators", "Admins"],
+      "expect_presence": true
+    }
   ]
 }

@@ -23,6 +23,7 @@ param(
     [Parameter(Mandatory = $true)][string]$RunPath,
     [string]$OutPath = "results/broad-perms.csv",
     [string[]]$Targets = @('Domain Users', 'Everyone', 'BUILTIN\\Users'),
+    [string]$Ruleset = (Join-Path $PSScriptRoot 'ruleset.json'),
     [switch]$IncludeInherited
 )
 
@@ -53,43 +54,101 @@ function Find-AclNodes([object]$node) {
 }
 
 function Normalize-Ace($ace) {
-    if ($ace -is [System.Collections.IDictionary]) { return $ace }
+    # Accept hashtables, PSCustomObject, and similar as dict-like
+    if ($ace -is [System.Collections.IDictionary] -or $ace -is [System.Management.Automation.PSObject]) { return $ace }
     return @{ raw = $ace }
 }
 
 $out = [System.Collections.Generic.List[object]]::new()
 
+# Load ruleset if available
+$rules = $null
+if ($Ruleset -and (Test-Path $Ruleset)) {
+    try { $rules = Get-Content -Raw -Path $Ruleset | ConvertFrom-Json -Depth 5 }
+    catch { Write-Warning "Failed to read ruleset $Ruleset: $_"; $rules = $null }
+}
+
 foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
     try { $json = Get-Content -Raw -Path $f.FullName | ConvertFrom-Json -Depth 10 }
     catch { Write-Warning "Failed to parse $($f.FullName): $_"; continue }
 
+    Write-Output "Parsed JSON properties: $($json.PSObject.Properties.Name -join ',')"
+
     # Prefer top-level 'acl' if present (common in exports)
-    if ($json -is [System.Collections.IDictionary] -and $json.PSObject.Properties.Name -contains 'acl' -and ($json.acl -is [System.Collections.IEnumerable])) {
+    if ($json.PSObject.Properties.Name -contains 'acl' -and ($json.acl -is [System.Collections.IEnumerable])) {
+        Write-Output "Found top-level ACL in $($f.FullName)"
         $node = $json
         $aclList = $json.acl
-        $folderPath = $json.path -or $json.folder -or $json.name
+        $folderPath = $null
+        if ($json.PSObject.Properties.Name -contains 'path') { $folderPath = $json.path }
+        if (-not $folderPath -and ($json.PSObject.Properties.Name -contains 'folder')) { $folderPath = $json.folder }
+        if (-not $folderPath -and ($json.PSObject.Properties.Name -contains 'name')) { $folderPath = $json.name }
         if (-not $folderPath) { $folderPath = $f.FullName }
 
         foreach ($ace in $aclList) {
             $aceDict = Normalize-Ace $ace
-            $aceName = $aceDict.name -or $aceDict.displayName -or $aceDict.identity -or $aceDict.sid -or ''
-            $aceSid = $aceDict.sid -or ''
-            $aceMask = $aceDict.mask -or $aceDict.rights -or $aceDict.permissions -or ''
+            $aceName = $null
+            if ($aceDict.PSObject.Properties.Name -contains 'name') { $aceName = $aceDict.name }
+            if (-not $aceName -and ($aceDict.PSObject.Properties.Name -contains 'displayName')) { $aceName = $aceDict.displayName }
+            if (-not $aceName -and ($aceDict.PSObject.Properties.Name -contains 'identity')) { $aceName = $aceDict.identity }
+            if (-not $aceName -and ($aceDict.PSObject.Properties.Name -contains 'sid')) { $aceName = $aceDict.sid }
+            if (-not $aceName) { $aceName = '' }
+
+            $aceSid = ''
+            if ($aceDict.PSObject.Properties.Name -contains 'sid') { $aceSid = $aceDict.sid }
+
+            $aceMask = ''
+            if ($aceDict.PSObject.Properties.Name -contains 'mask') { $aceMask = $aceDict.mask }
+            elseif ($aceDict.PSObject.Properties.Name -contains 'rights') { $aceMask = $aceDict.rights }
+            elseif ($aceDict.PSObject.Properties.Name -contains 'permissions') { $aceMask = $aceDict.permissions }
             $aceInherited = $aceDict.inherited -eq $true
 
             if ($aceInherited -and -not $IncludeInherited) { continue }
 
-            $targetMatch = $false
-            foreach ($t in $Targets) {
-                if ($aceName -and ($aceName -like "*$t*")) { $targetMatch = $true; break }
-                if ($aceSid -and ($aceSid -like "*$t*")) { $targetMatch = $true; break }
+            # Determine matches either via ruleset (preferred) or fallback Targets + heuristic
+            $matchedRuleIds = @()
+            if ($rules -and $rules.rules) {
+                foreach ($rule in $rules.rules) {
+                    $identityMatched = $false
+                    foreach ($pat in $rule.identity_patterns) {
+                        if ($aceName -and ($aceName -like "*$pat*")) { $identityMatched = $true; break }
+                        if ($aceSid -and ($aceSid -like "*$pat*")) { $identityMatched = $true; break }
+                    }
+                    if (-not $identityMatched) { continue }
+
+                    $permMatched = $false
+                    if ($rule.perm_match) {
+                        try {
+                            if ($aceMask -and ($aceMask -match $rule.perm_match)) { $permMatched = $true }
+                        }
+                        catch { }
+                    }
+                    else {
+                        if ($aceMask -is [string] -and ($aceMask -match '(?i)full|fullcontrol|modify|write')) { $permMatched = $true }
+                        elseif ($aceMask -is [int] -and ($aceMask -gt 0)) { $permMatched = $true }
+                    }
+
+                    if ($permMatched) { $matchedRuleIds += $rule.id }
+                }
+            }
+            else {
+                $targetMatch = $false
+                foreach ($t in $Targets) {
+                    if ($aceName -and ($aceName -like "*$t*")) { $targetMatch = $true; break }
+                    if ($aceSid -and ($aceSid -like "*$t*")) { $targetMatch = $true; break }
+                }
+
+                $highPerm = $false
+                if ($aceMask -is [string] -and ($aceMask -match '(?i)full|fullcontrol|modify|write')) { $highPerm = $true }
+                elseif ($aceMask -is [int] -and ($aceMask -gt 0)) { $highPerm = $true }
+
+                if ($targetMatch -and $highPerm) { $matchedRuleIds += 'fallback' }
             }
 
-            $highPerm = $false
-            if ($aceMask -is [string] -and ($aceMask -match '(?i)full|fullcontrol|modify|write')) { $highPerm = $true }
-            elseif ($aceMask -is [int] -and ($aceMask -gt 0)) { $highPerm = $true }
+            Write-Output "ACE eval: name='$aceName' sid='$aceSid' mask='$aceMask' inherited=$aceInherited matchedRules=$($matchedRuleIds -join ',')"
 
-            if ($targetMatch -and $highPerm) {
+            if ($matchedRuleIds.Count -gt 0) {
+                Write-Output "Matched ACE: $aceName on $folderPath via rules: $($matchedRuleIds -join ',')"
                 $out.Add([PSCustomObject]@{
                         source_file   = $f.FullName
                         folder_path   = $folderPath
@@ -97,6 +156,7 @@ foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
                         ace_sid       = $aceSid
                         ace_mask      = $aceMask
                         ace_inherited = $aceInherited
+                        matched_rules = ($matchedRuleIds -join ',')
                         ace_raw       = ($ace | ConvertTo-Json -Depth 5 -Compress)
                     })
             }
