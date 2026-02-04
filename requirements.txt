@@ -1,5 +1,5 @@
-duckdb
-pandas
-pyarrow
+duckdb>=0.7
+pandas>=1.5
+pyarrow>=8.0
 tqdm
 pytest
