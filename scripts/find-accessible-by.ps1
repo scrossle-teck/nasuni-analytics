@@ -15,8 +15,8 @@
   Include inherited ACEs.
 #>
 param(
-    [Parameter(Mandatory=$true)][string]$RunPath,
-    [Parameter(Mandatory=$true)][string]$Identity,
+    [Parameter(Mandatory = $true)][string]$RunPath,
+    [Parameter(Mandatory = $true)][string]$Identity,
     [string]$OutPath = "results/accessible-by.csv",
     [switch]$IncludeInherited
 )
@@ -30,7 +30,7 @@ function Find-AclNodes([object]$node) {
     if ($node -is [System.Collections.IDictionary]) {
         foreach ($kv in $node.GetEnumerator()) {
             $k = $kv.Key; $v = $kv.Value
-            if ($k -match '^(acl|acls|aces|aclList)$' -and ($v -is [System.Collections.IEnumerable])) { [PSCustomObject]@{Node=$node; AclList=$v} }
+            if ($k -match '^(acl|acls|aces|aclList)$' -and ($v -is [System.Collections.IEnumerable])) { [PSCustomObject]@{Node = $node; AclList = $v } }
             else { foreach ($child in Find-AclNodes $v) { $child } }
         }
     }
@@ -46,7 +46,7 @@ foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
     foreach ($nodeInfo in Find-AclNodes $json) {
         $node = $nodeInfo.Node; $aclList = $nodeInfo.AclList
         $folderPath = $null
-        foreach ($cand in @('path','folder','name','folderPath','folder_path')) { if ($node.PSObject.Properties.Name -contains $cand) { $folderPath = $node.$cand; break } }
+        foreach ($cand in @('path', 'folder', 'name', 'folderPath', 'folder_path')) { if ($node.PSObject.Properties.Name -contains $cand) { $folderPath = $node.$cand; break } }
         if (-not $folderPath) { $folderPath = $f.FullName }
 
         foreach ($ace in $aclList) {
@@ -58,13 +58,13 @@ foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
 
             if (($aceName -and ($aceName -like "*${Identity}*")) -or ($aceSid -and ($aceSid -like "*${Identity}*"))) {
                 $results.Add([PSCustomObject]@{
-                    source_file = $f.FullName
-                    folder_path = $folderPath
-                    ace_name = $aceName
-                    ace_sid = $aceSid
-                    ace_inherited = $aceInherited
-                    ace_raw = ($ace | ConvertTo-Json -Depth 5 -Compress)
-                })
+                        source_file   = $f.FullName
+                        folder_path   = $folderPath
+                        ace_name      = $aceName
+                        ace_sid       = $aceSid
+                        ace_inherited = $aceInherited
+                        ace_raw       = ($ace | ConvertTo-Json -Depth 5 -Compress)
+                    })
             }
         }
     }
