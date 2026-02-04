@@ -77,7 +77,6 @@ Detailed docs for each script are available under `scripts/docs/`:
 - `scripts/docs/ace-utils.md`
 - `scripts/docs/ingest_duckdb.md`
 
-
 ## Tests
 
 - **PowerShell (Pester):**
