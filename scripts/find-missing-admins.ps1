@@ -81,10 +81,34 @@ foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
             if ($aceObj.PSObject.Properties.Name -contains 'inherited') { $aceInherited = $aceObj.inherited -eq $true } else { $aceInherited = $false }
             if ($aceInherited -and -not $IncludeInherited) { continue }
 
-            # check identity patterns
+            # check identity patterns and required permissions
             foreach ($pat in $rule.identity_patterns) {
-                if ($aceName -and ($aceName -like "*${pat}*")) { $found += $aceName; break }
-                if ($aceSid -and ($aceSid -like "*${pat}*")) { $found += $aceSid; break }
+                if ($aceName -and ($aceName -like "*${pat}*")) {
+                    # determine whether ACE meets permission requirement
+                    $permOk = $false
+                    if ($rule.PSObject.Properties.Name -contains 'perm_match') {
+                        try { if ($aceMask -and ($aceMask -match $rule.perm_match)) { $permOk = $true } } catch { }
+                    }
+                    else {
+                        # fallback to heuristics
+                        . "$PSScriptRoot\ace-utils.ps1"
+                        if (Test-HighPermission $aceMask) { $permOk = $true }
+                    }
+                    if ($permOk) { $found += $aceName }
+                    break
+                }
+                if ($aceSid -and ($aceSid -like "*${pat}*")) {
+                    $permOk = $false
+                    if ($rule.PSObject.Properties.Name -contains 'perm_match') {
+                        try { if ($aceMask -and ($aceMask -match $rule.perm_match)) { $permOk = $true } } catch { }
+                    }
+                    else {
+                        . "$PSScriptRoot\ace-utils.ps1"
+                        if (Test-HighPermission $aceMask) { $permOk = $true }
+                    }
+                    if ($permOk) { $found += $aceSid }
+                    break
+                }
             }
         }
 
