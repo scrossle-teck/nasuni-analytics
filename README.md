@@ -65,6 +65,19 @@ python3 scripts/ingest_duckdb.py --run runs/run-20260202-124902 --out out/duckdb
 - `summarize-run.ps1` — parameters: `-RunPath`, `-OutPath`.
 - `run-analytics.ps1` — wrapper; accepts `-Checks` values that can be names (`BroadPerms`,`AccessibleBy`,`Summarize`) or rule ids from `scripts/ruleset.json`.
 
+## Script documentation
+
+Detailed docs for each script are available under `scripts/docs/`:
+
+- `scripts/docs/find-broad-perms.md`
+- `scripts/docs/find-accessible-by.md`
+- `scripts/docs/find-missing-admins.md`
+- `scripts/docs/summarize-run.md`
+- `scripts/docs/run-analytics.md`
+- `scripts/docs/ace-utils.md`
+- `scripts/docs/ingest_duckdb.md`
+
+
 ## Tests
 
 - **PowerShell (Pester):**
