@@ -1,0 +1,48 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<test-results xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="nunit_schema_2.5.xsd" name="Pester" total="3" errors="0" failures="2" not-run="0" inconclusive="0" ignored="0" skipped="0" invalid="0" date="2026-02-04" time="10:41:06">
+  <environment clr-version="9.0.10" user="scrossle" platform="Microsoft Windows 11 Enterprise|C:\WINDOWS|\Device\Harddisk0\Partition4" nunit-version="2.5.8.0" os-version="10.0.26100" machine-name="TRLL2459001" user-domain="TECKCOMINCO" cwd="C:\Users\scrossle\Scripts\nasuni-analytics" />
+  <culture-info current-culture="en-US" current-uiculture="en-US" />
+  <test-suite type="TestFixture" name="Pester" executed="True" result="Failure" success="False" time="0.8832" asserts="0" description="Pester">
+    <results>
+      <test-suite type="TestFixture" name="C:\Users\scrossle\Scripts\nasuni-analytics\tests\pester\Find-Accessible-By.Tests.ps1" executed="True" result="Failure" success="False" time="0.6428" asserts="0" description="C:\Users\scrossle\Scripts\nasuni-analytics\tests\pester\Find-Accessible-By.Tests.ps1">
+        <results>
+          <test-suite type="TestFixture" name="find-accessible-by.ps1" executed="True" result="Failure" success="False" time="0.2203" asserts="0" description="find-accessible-by.ps1">
+            <results>
+              <test-case description="Finds ACEs for supplied identity and writes CSV" name="find-accessible-by.ps1.Finds ACEs for supplied identity and writes CSV" time="0.151" asserts="0" success="False" result="Failure" executed="True">
+                <failure>
+                  <message>Expected $true, but got $false.</message>
+                  <stack-trace>at Test-Path $out | Should -BeTrue, C:\Users\scrossle\Scripts\nasuni-analytics\tests\pester\Find-Accessible-By.Tests.ps1:25
+at &lt;ScriptBlock&gt;, C:\Users\scrossle\Scripts\nasuni-analytics\tests\pester\Find-Accessible-By.Tests.ps1:25</stack-trace>
+                </failure>
+              </test-case>
+            </results>
+          </test-suite>
+        </results>
+      </test-suite>
+      <test-suite type="TestFixture" name="C:\Users\scrossle\Scripts\nasuni-analytics\tests\pester\Find-Broad-Perms.Tests.ps1" executed="True" result="Failure" success="False" time="0.0984" asserts="0" description="C:\Users\scrossle\Scripts\nasuni-analytics\tests\pester\Find-Broad-Perms.Tests.ps1">
+        <results>
+          <test-suite type="TestFixture" name="find-broad-perms.ps1" executed="True" result="Failure" success="False" time="0.0398" asserts="0" description="find-broad-perms.ps1">
+            <results>
+              <test-case description="Detects Domain Users FullControl ACEs and writes CSV" name="find-broad-perms.ps1.Detects Domain Users FullControl ACEs and writes CSV" time="0.0348" asserts="0" success="False" result="Failure" executed="True">
+                <failure>
+                  <message>Expected $true, but got $false.</message>
+                  <stack-trace>at Test-Path $out | Should -BeTrue, C:\Users\scrossle\Scripts\nasuni-analytics\tests\pester\Find-Broad-Perms.Tests.ps1:25
+at &lt;ScriptBlock&gt;, C:\Users\scrossle\Scripts\nasuni-analytics\tests\pester\Find-Broad-Perms.Tests.ps1:25</stack-trace>
+                </failure>
+              </test-case>
+            </results>
+          </test-suite>
+        </results>
+      </test-suite>
+      <test-suite type="TestFixture" name="C:\Users\scrossle\Scripts\nasuni-analytics\tests\pester\Summarize-Run.Tests.ps1" executed="True" result="Success" success="True" time="0.142" asserts="0" description="C:\Users\scrossle\Scripts\nasuni-analytics\tests\pester\Summarize-Run.Tests.ps1">
+        <results>
+          <test-suite type="TestFixture" name="summarize-run.ps1" executed="True" result="Success" success="True" time="0.0728" asserts="0" description="summarize-run.ps1">
+            <results>
+              <test-case description="Produces run summary CSV with run id" name="summarize-run.ps1.Produces run summary CSV with run id" time="0.0681" asserts="0" success="True" result="Success" executed="True" />
+            </results>
+          </test-suite>
+        </results>
+      </test-suite>
+    </results>
+  </test-suite>
+</test-results>

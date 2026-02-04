@@ -1,8 +1,11 @@
 import json
-import os
+import sys
 from pathlib import Path
 
 import pandas as pd
+
+# Ensure repo root is on sys.path so `scripts` is importable from tests
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts.ingest_duckdb import process_run
 
@@ -47,5 +50,3 @@ def test_process_run_writes_parquet(tmp_path: Path):
     # check that Domain Users row exists
     names = set(df['ace_name'].dropna().astype(str).tolist())
     assert any('Domain Users' in n for n in names)
-
-*** End Patch

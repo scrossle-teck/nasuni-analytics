@@ -63,6 +63,47 @@ foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
     try { $json = Get-Content -Raw -Path $f.FullName | ConvertFrom-Json -Depth 10 }
     catch { Write-Warning "Failed to parse $($f.FullName): $_"; continue }
 
+    # Prefer top-level 'acl' if present (common in exports)
+    if ($json -is [System.Collections.IDictionary] -and $json.PSObject.Properties.Name -contains 'acl' -and ($json.acl -is [System.Collections.IEnumerable])) {
+        $node = $json
+        $aclList = $json.acl
+        $folderPath = $json.path -or $json.folder -or $json.name
+        if (-not $folderPath) { $folderPath = $f.FullName }
+
+        foreach ($ace in $aclList) {
+            $aceDict = Normalize-Ace $ace
+            $aceName = $aceDict.name -or $aceDict.displayName -or $aceDict.identity -or $aceDict.sid -or ''
+            $aceSid = $aceDict.sid -or ''
+            $aceMask = $aceDict.mask -or $aceDict.rights -or $aceDict.permissions -or ''
+            $aceInherited = $aceDict.inherited -eq $true
+
+            if ($aceInherited -and -not $IncludeInherited) { continue }
+
+            $targetMatch = $false
+            foreach ($t in $Targets) {
+                if ($aceName -and ($aceName -like "*$t*")) { $targetMatch = $true; break }
+                if ($aceSid -and ($aceSid -like "*$t*")) { $targetMatch = $true; break }
+            }
+
+            $highPerm = $false
+            if ($aceMask -is [string] -and ($aceMask -match '(?i)full|fullcontrol|modify|write')) { $highPerm = $true }
+            elseif ($aceMask -is [int] -and ($aceMask -gt 0)) { $highPerm = $true }
+
+            if ($targetMatch -and $highPerm) {
+                $out.Add([PSCustomObject]@{
+                        source_file   = $f.FullName
+                        folder_path   = $folderPath
+                        ace_name      = $aceName
+                        ace_sid       = $aceSid
+                        ace_mask      = $aceMask
+                        ace_inherited = $aceInherited
+                        ace_raw       = ($ace | ConvertTo-Json -Depth 5 -Compress)
+                    })
+            }
+        }
+        continue
+    }
+
     foreach ($nodeInfo in Find-AclNodes $json) {
         $node = $nodeInfo.Node
         $aclList = $nodeInfo.AclList
