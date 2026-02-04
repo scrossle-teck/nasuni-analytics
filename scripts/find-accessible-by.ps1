@@ -43,6 +43,33 @@ foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
     try { $json = Get-Content -Raw -Path $f.FullName | ConvertFrom-Json -Depth 10 }
     catch { Write-Warning "Failed to parse $($f.FullName): $_"; continue }
 
+    # Prefer top-level 'acl' if present
+    if ($json -is [System.Collections.IDictionary] -and $json.PSObject.Properties.Name -contains 'acl' -and ($json.acl -is [System.Collections.IEnumerable])) {
+        $aclList = $json.acl
+        $folderPath = $json.path -or $json.folder -or $json.name
+        if (-not $folderPath) { $folderPath = $f.FullName }
+
+        foreach ($ace in $aclList) {
+            $aceObj = $ace
+            $aceName = if ($aceObj -is [System.Collections.IDictionary]) { $aceObj.name -or $aceObj.displayName -or $aceObj.identity -or '' } else { '' }
+            $aceSid = if ($aceObj -is [System.Collections.IDictionary]) { $aceObj.sid -or '' } else { '' }
+            $aceInherited = if ($aceObj -is [System.Collections.IDictionary]) { $aceObj.inherited -eq $true } else { $false }
+            if ($aceInherited -and -not $IncludeInherited) { continue }
+
+            if (($aceName -and ($aceName -like "*${Identity}*")) -or ($aceSid -and ($aceSid -like "*${Identity}*"))) {
+                $results.Add([PSCustomObject]@{
+                        source_file   = $f.FullName
+                        folder_path   = $folderPath
+                        ace_name      = $aceName
+                        ace_sid       = $aceSid
+                        ace_inherited = $aceInherited
+                        ace_raw       = ($ace | ConvertTo-Json -Depth 5 -Compress)
+                    })
+            }
+        }
+        continue
+    }
+
     foreach ($nodeInfo in Find-AclNodes $json) {
         $node = $nodeInfo.Node; $aclList = $nodeInfo.AclList
         $folderPath = $null
