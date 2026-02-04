@@ -1,0 +1,16 @@
+{
+  "rules": [
+    {
+      "id": "DomainUsersFullControl",
+      "description": "Domain Users (or similar) granted FullControl/Modify",
+      "identity_patterns": ["Domain Users", "Everyone", "BUILTIN\\\\Users"],
+      "perm_match": "(?i)full|fullcontrol|modify|write"
+    },
+    {
+      "id": "EveryoneModify",
+      "description": "Everyone granted modify or greater",
+      "identity_patterns": ["Everyone"],
+      "perm_match": "(?i)modify|write|full"
+    }
+  ]
+}

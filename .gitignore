@@ -1,8 +1,9 @@
 .cache/
 .github/
+.venv/
 .vscode/
+__pycache__/
 *.log
 *.csv
-*.json
 folderacls*/
 runs/
