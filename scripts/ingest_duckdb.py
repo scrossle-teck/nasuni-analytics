@@ -1,0 +1,145 @@
+#!/usr/bin/env python3
+"""Ingest forensic ACL JSON files into Parquet files suitable for DuckDB queries.
+
+Usage:
+  python scripts/ingest_duckdb.py --run-path runs/run-20260202-124902 --out-dir out/parquet
+
+Notes:
+- Designed to run inside a Python virtualenv created with `python -m venv .venv`.
+- Install deps: `pip install -r requirements.txt`
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+from glob import glob
+from pathlib import Path
+from typing import Any, Dict, Iterable, List
+
+import pandas as pd
+from tqdm import tqdm
+
+
+def find_folderacl_files(run_path: Path) -> List[Path]:
+    p1 = run_path / "folderacls"
+    if p1.exists():
+        return sorted(p1.glob("*.json"))
+    # fallback: search recursively
+    return sorted(Path(run_path).rglob("*folderacls/*.json"))
+
+
+def extract_acls_from_json(data: Any, source_file: str) -> Iterable[Dict[str, Any]]:
+    """Traverse a JSON object and yield flattened ACL rows when ACL lists are found.
+
+    Heuristics: look for keys named 'acl', 'acls', 'aces', or 'aclList' with a list value.
+    Attempt to find a folder path in sibling keys like 'path', 'folder', 'name', or 'folderPath'.
+    """
+
+    def find_acl_nodes(obj: Any):
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                key_lower = k.lower()
+                if key_lower in ("acl", "acls", "aces", "aclList") and isinstance(v, list):
+                    yield obj
+                else:
+                    yield from find_acl_nodes(v)
+        elif isinstance(obj, list):
+            for item in obj:
+                yield from find_acl_nodes(item)
+
+    for node in find_acl_nodes(data):
+        # find path in node or its parent-like keys
+        folder_path = None
+        for candidate in ("path", "folder", "name", "folderPath", "folder_path"):
+            if candidate in node:
+                folder_path = node.get(candidate)
+                break
+        # if not found, set to source file path
+        if not folder_path:
+            folder_path = source_file
+
+        # find the ACL list value
+        acl_list = None
+        for k in ("acl", "acls", "aces", "aclList"):
+            if k in node and isinstance(node[k], list):
+                acl_list = node[k]
+                break
+        if not acl_list:
+            # try any list-valued field
+            for k, v in node.items():
+                if isinstance(v, list):
+                    acl_list = v
+                    break
+        if not acl_list:
+            continue
+
+        for ace in acl_list:
+            # normalize common fields; leave raw ACE when unknown
+            sid = ace.get("sid") if isinstance(ace, dict) else None
+            name = ace.get("name") if isinstance(ace, dict) else None
+            ace_type = ace.get("type") if isinstance(ace, dict) else None
+            mask = ace.get("mask") if isinstance(ace, dict) else None
+            inherited = ace.get("inherited") if isinstance(ace, dict) else None
+            yield {
+                "source_file": source_file,
+                "folder_path": folder_path,
+                "ace_sid": sid,
+                "ace_name": name,
+                "ace_type": ace_type,
+                "ace_mask": mask,
+                "ace_inherited": inherited,
+                "ace_raw": json.dumps(ace, ensure_ascii=False) if not isinstance(ace, str) else ace,
+            }
+
+
+def process_run(run_path: str, out_dir: str) -> None:
+    run_path_p = Path(run_path)
+    if not run_path_p.exists():
+        raise SystemExit(f"Run path does not exist: {run_path}")
+
+    out_dir_p = Path(out_dir)
+    out_dir_p.mkdir(parents=True, exist_ok=True)
+
+    files = find_folderacl_files(run_path_p)
+    if not files:
+        print(f"No folder ACL JSON files found under {run_path}")
+        return
+
+    run_id = Path(run_path).name
+    target_dir = out_dir_p / run_id
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    for f in tqdm(files, desc="processing files"):
+        try:
+            with open(f, "r", encoding="utf-8") as fh:
+                data = json.load(fh)
+        except Exception as e:
+            print(f"Failed to parse {f}: {e}")
+            continue
+
+        rows = list(extract_acls_from_json(data, str(f)))
+        if not rows:
+            continue
+
+        df = pd.DataFrame(rows)
+
+        out_file = target_dir / (f.stem + ".parquet")
+        try:
+            df.to_parquet(out_file, index=False)
+        except Exception as e:
+            print(f"Failed to write parquet for {f}: {e}")
+
+    print(f"Finished. Parquet files written to: {target_dir}")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Ingest ACL JSON files to Parquet for DuckDB")
+    parser.add_argument("--run-path", required=True, help="Path to a run directory (e.g., runs/run-20260202-124902)")
+    parser.add_argument("--out-dir", required=True, help="Output directory for Parquet files")
+    args = parser.parse_args()
+    process_run(args.run_path, args.out_dir)
+
+
+if __name__ == "__main__":
+    main()
