@@ -29,6 +29,9 @@ param(
 
 Set-StrictMode -Version Latest
 
+# load ACE helpers
+. "$PSScriptRoot\ace-utils.ps1"
+
 function Get-FolderAclFiles {
     param([string]$runPath)
     $fa = Join-Path $runPath 'folderacls'
@@ -65,7 +68,7 @@ $out = [System.Collections.Generic.List[object]]::new()
 $rules = $null
 if ($Ruleset -and (Test-Path $Ruleset)) {
     try { $rules = Get-Content -Raw -Path $Ruleset | ConvertFrom-Json -Depth 5 }
-    catch { Write-Warning "Failed to read ruleset $Ruleset: $_"; $rules = $null }
+    catch { Write-Warning ("Failed to read ruleset {0}: {1}" -f $Ruleset, $_); $rules = $null }
 }
 
 foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
@@ -117,15 +120,14 @@ foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
                     if (-not $identityMatched) { continue }
 
                     $permMatched = $false
-                    if ($rule.perm_match) {
+                    if ($rule.PSObject.Properties.Name -contains 'perm_match') {
                         try {
-                            if ($aceMask -and ($aceMask -match $rule.perm_match)) { $permMatched = $true }
+                            if (Test-HighPermission $aceMask -and ($aceMask -match $rule.perm_match)) { $permMatched = $true }
                         }
                         catch { }
                     }
                     else {
-                        if ($aceMask -is [string] -and ($aceMask -match '(?i)full|fullcontrol|modify|write')) { $permMatched = $true }
-                        elseif ($aceMask -is [int] -and ($aceMask -gt 0)) { $permMatched = $true }
+                        if (Test-HighPermission $aceMask) { $permMatched = $true }
                     }
 
                     if ($permMatched) { $matchedRuleIds += $rule.id }
@@ -138,9 +140,7 @@ foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
                     if ($aceSid -and ($aceSid -like "*$t*")) { $targetMatch = $true; break }
                 }
 
-                $highPerm = $false
-                if ($aceMask -is [string] -and ($aceMask -match '(?i)full|fullcontrol|modify|write')) { $highPerm = $true }
-                elseif ($aceMask -is [int] -and ($aceMask -gt 0)) { $highPerm = $true }
+                $highPerm = Test-HighPermission $aceMask
 
                 if ($targetMatch -and $highPerm) { $matchedRuleIds += 'fallback' }
             }

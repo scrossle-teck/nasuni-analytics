@@ -37,6 +37,48 @@ $ runPath = 'runs/run-20260202-124902'
 > ./scripts/find-broad-perms.ps1 -RunPath $runPath -OutPath results/broad-perms.csv
 ```
 
+## Quick Start
+
+- **Run all checks (wrapper):**
+
+```powershell
+./scripts/run-analytics.ps1 -RunPath .\runs\run-20260202-124902 -OutDir .\out -Checks BroadPerms,AccessibleBy,Summarize -Identity 'Domain Users' -Ruleset .\scripts\ruleset.json
+```
+
+- **Run a single rule by id:**
+
+```powershell
+# will produce <rule-id>.csv (for perm rules) or run a presence check for expect_presence rules
+./scripts/run-analytics.ps1 -RunPath .\runs\run-20260202-124902 -OutDir .\out -Checks DomainUsersFullControl -Ruleset .\scripts\ruleset.json
+```
+
+- **Ingest JSON to DuckDB (Python):**
+
+```bash
+python3 scripts/ingest_duckdb.py --run runs/run-20260202-124902 --out out/duckdb
+```
+
+## Script Reference & Examples
+
+- `find-broad-perms.ps1` — parameters: `-RunPath`, `-OutPath`, `-Targets`, `-Ruleset`, `-IncludeInherited`.
+- `find-accessible-by.ps1` — parameters: `-RunPath`, `-Identity`, `-OutPath`, `-Ruleset`, `-IncludeInherited`. `-Identity` accepts a rule id from `ruleset.json`.
+- `summarize-run.ps1` — parameters: `-RunPath`, `-OutPath`.
+- `run-analytics.ps1` — wrapper; accepts `-Checks` values that can be names (`BroadPerms`,`AccessibleBy`,`Summarize`) or rule ids from `scripts/ruleset.json`.
+
+## Tests
+
+- **PowerShell (Pester):**
+
+```powershell
+Import-Module Pester; Invoke-Pester -Script .\tests\pester
+```
+
+- **Python (pytest):**
+
+```bash
+pytest -q
+```
+
 ## Design notes for implementers / LLMs
 
 - **Preserve fidelity:** Do not normalize away ACL details—keep SIDs, resolved names, ACE types, inherited flags, and permission masks.

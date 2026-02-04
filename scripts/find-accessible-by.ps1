@@ -24,6 +24,9 @@ param(
 
 Set-StrictMode -Version Latest
 
+# load ACE helpers
+. "$PSScriptRoot\ace-utils.ps1"
+
 function Get-FolderAclFiles { param([string]$runPath) $fa = Join-Path $runPath 'folderacls'; if (Test-Path $fa) { Get-ChildItem -Path $fa -Filter *.json -File } else { Get-ChildItem -Path $runPath -Recurse -Include *.json -File | Where-Object { $_.FullName -match 'folderacls' } } }
 
 function Find-AclNodes([object]$node) {
@@ -44,7 +47,7 @@ $results = [System.Collections.Generic.List[object]]::new()
 $rules = $null
 if ($Ruleset -and (Test-Path $Ruleset)) {
     try { $rules = Get-Content -Raw -Path $Ruleset | ConvertFrom-Json -Depth 5 }
-    catch { Write-Warning "Failed to read ruleset $Ruleset: $_"; $rules = $null }
+    catch { Write-Warning ("Failed to read ruleset {0}: {1}" -f $Ruleset, $_); $rules = $null }
 }
 
 foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
