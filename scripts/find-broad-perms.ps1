@@ -45,7 +45,7 @@ function Find-AclNodes([object]$node) {
         foreach ($kv in $node.GetEnumerator()) {
             $k = $kv.Key
             $v = $kv.Value
-            if ($k -match '^(acl|acls|aces|aclList)$' -and ($v -is [System.Collections.IEnumerable])) {
+            if ($k -match '^(?i)(acl|acls|aces|aclList|access|accessList|rights|permissions)$' -and ($v -is [System.Collections.IEnumerable])) {
                 [PSCustomObject]@{Node = $node; AclList = $v }
             }
             else { foreach ($child in Find-AclNodes $v) { $child } }
@@ -77,11 +77,12 @@ foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
 
     Write-Output "Parsed JSON properties: $($json.PSObject.Properties.Name -join ',')"
 
-    # Prefer top-level 'acl' if present (common in exports)
-    if ($json.PSObject.Properties.Name -contains 'acl' -and ($json.acl -is [System.Collections.IEnumerable])) {
-        Write-Output "Found top-level ACL in $($f.FullName)"
+    # Prefer common top-level ACL-like properties (acl, access, aces, rights, permissions)
+    $topAclProp = $json.PSObject.Properties.Name | Where-Object { $_ -match '^(?i)(acl|acls|aces|aclList|access|accessList|rights|permissions)$' } | Select-Object -First 1
+    if ($topAclProp -and ($json.$topAclProp -is [System.Collections.IEnumerable])) {
+        Write-Output ("Found top-level ACL property '{0}' in {1}" -f $topAclProp, $($f.FullName))
         $node = $json
-        $aclList = $json.acl
+        $aclList = $json.$topAclProp
         $folderPath = $null
         if ($json.PSObject.Properties.Name -contains 'path') { $folderPath = $json.path }
         if (-not $folderPath -and ($json.PSObject.Properties.Name -contains 'folder')) { $folderPath = $json.folder }
@@ -104,7 +105,10 @@ foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
             if ($aceDict.PSObject.Properties.Name -contains 'mask') { $aceMask = $aceDict.mask }
             elseif ($aceDict.PSObject.Properties.Name -contains 'rights') { $aceMask = $aceDict.rights }
             elseif ($aceDict.PSObject.Properties.Name -contains 'permissions') { $aceMask = $aceDict.permissions }
-            $aceInherited = $aceDict.inherited -eq $true
+            $aceInherited = $false
+            if ($aceDict.PSObject.Properties.Name -contains 'inherited') { $aceInherited = $aceDict.inherited -eq $true }
+            elseif ($aceDict.PSObject.Properties.Name -contains 'IsInherited') { $aceInherited = $aceDict.IsInherited -eq $true }
+            elseif ($aceDict.PSObject.Properties.Name -contains 'isInherited') { $aceInherited = $aceDict.isInherited -eq $true }
 
             if ($aceInherited -and -not $IncludeInherited) { continue }
 
@@ -179,7 +183,10 @@ foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
             $aceName = $aceDict.name -or $aceDict.displayName -or $aceDict.identity -or $aceDict.sid -or ''
             $aceSid = $aceDict.sid -or ''
             $aceMask = $aceDict.mask -or $aceDict.rights -or $aceDict.permissions -or ''
-            $aceInherited = $aceDict.inherited -eq $true
+            $aceInherited = $false
+            if ($aceDict.PSObject.Properties.Name -contains 'inherited') { $aceInherited = $aceDict.inherited -eq $true }
+            elseif ($aceDict.PSObject.Properties.Name -contains 'IsInherited') { $aceInherited = $aceDict.IsInherited -eq $true }
+            elseif ($aceDict.PSObject.Properties.Name -contains 'isInherited') { $aceInherited = $aceDict.isInherited -eq $true }
 
             if ($aceInherited -and -not $IncludeInherited) { continue }
 
@@ -193,7 +200,36 @@ foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
             if ($aceMask -is [string] -and ($aceMask -match '(?i)full|fullcontrol|modify|write')) { $highPerm = $true }
             elseif ($aceMask -is [int] -and ($aceMask -gt 0)) { $highPerm = $true }
 
-            if ($targetMatch -and $highPerm) {
+            # Compute matched rules for this ACE (support ruleset-driven matching and fallback)
+            $matchedRuleIds = @()
+            if ($rules -and $rules.rules) {
+                foreach ($rule in $rules.rules) {
+                    $identityMatched = $false
+                    foreach ($pat in $rule.identity_patterns) {
+                        if ($aceName -and ($aceName -like "*$pat*")) { $identityMatched = $true; break }
+                        if ($aceSid -and ($aceSid -like "*$pat*")) { $identityMatched = $true; break }
+                    }
+                    if (-not $identityMatched) { continue }
+
+                    $permMatched = $false
+                    if ($rule.PSObject.Properties.Name -contains 'perm_match') {
+                        try {
+                            if (Test-HighPermission $aceMask -and ($aceMask -match $rule.perm_match)) { $permMatched = $true }
+                        }
+                        catch { }
+                    }
+                    else {
+                        if (Test-HighPermission $aceMask) { $permMatched = $true }
+                    }
+
+                    if ($permMatched) { $matchedRuleIds += $rule.id }
+                }
+            }
+            else {
+                if ($targetMatch -and $highPerm) { $matchedRuleIds += 'fallback' }
+            }
+
+            if ($matchedRuleIds.Count -gt 0) {
                 $out.Add([PSCustomObject]@{
                         source_file   = $f.FullName
                         folder_path   = $folderPath
@@ -201,6 +237,7 @@ foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
                         ace_sid       = $aceSid
                         ace_mask      = $aceMask
                         ace_inherited = $aceInherited
+                        matched_rules = ($matchedRuleIds -join ',')
                         ace_raw       = ($ace | ConvertTo-Json -Depth 5 -Compress)
                     })
             }
@@ -208,7 +245,15 @@ foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
     }
 }
 
-if ($out.Count -eq 0) { Write-Output "No broad permissions found."; exit 0 }
+if ($out.Count -eq 0) {
+    # Ensure output directory exists and create an empty CSV with header so callers can Import-Csv safely
+    $outDir = Split-Path -Parent $OutPath
+    if ($outDir -and -not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir -Force | Out-Null }
+    $headers = 'source_file', 'folder_path', 'ace_name', 'ace_sid', 'ace_mask', 'ace_inherited', 'matched_rules', 'ace_raw'
+    ($headers -join ',') | Out-File -FilePath $OutPath -Encoding UTF8
+    Write-Output "No broad permissions found. Empty CSV created at: $OutPath"
+    exit 0
+}
 
 $outDir = Split-Path -Parent $OutPath
 if ($outDir -and -not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir -Force | Out-Null }
