@@ -1,25 +1,25 @@
-## Ingest DuckDB pipeline
+# Ingest DuckDB pipeline
 
 Quick start (Windows + PowerShell 7):
 
 1. Create and activate a virtual environment:
 
-```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-```
+    ```powershell
+    python -m venv .venv
+    .\.venv\Scripts\Activate.ps1
+    ```
 
 2. Install dependencies:
 
-```powershell
-pip install -r requirements.txt
-```
+    ```powershell
+    pip install -r requirements.txt
+    ```
 
 3. Run the ingestion script:
 
-```powershell
-python scripts/ingest_duckdb.py --run-path runs/run-20260202-124902 --out-dir out/parquet
-```
+    ```powershell
+    python scripts/ingest_duckdb.py --run-path runs/run-20260202-124902 --out-dir out/parquet
+    ```
 
 Output:
 
