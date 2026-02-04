@@ -1,5 +1,5 @@
 param(
-    [Parameter(Mandatory=$true)][string]$Path
+    [Parameter(Mandatory = $true)][string]$Path
 )
 
 Write-Output "Inspecting: $Path"
