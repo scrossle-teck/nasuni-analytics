@@ -40,7 +40,7 @@ def extract_acls_from_json(data: Any, source_file: str) -> Iterable[Dict[str, An
         if isinstance(obj, dict):
             for k, v in obj.items():
                 key_lower = k.lower()
-                if key_lower in ("acl", "acls", "aces", "aclList") and isinstance(v, list):
+                if key_lower in ("acl", "acls", "aces", "acllist", "access", "accesslist", "rights", "permissions") and isinstance(v, list):
                     yield obj
                 else:
                     yield from find_acl_nodes(v)
@@ -51,9 +51,13 @@ def extract_acls_from_json(data: Any, source_file: str) -> Iterable[Dict[str, An
     for node in find_acl_nodes(data):
         # find path in node or its parent-like keys
         folder_path = None
+        # lookup folder path case-insensitively since many JSONs use capitalized keys like 'Path'
         for candidate in ("path", "folder", "name", "folderPath", "folder_path"):
-            if candidate in node:
-                folder_path = node.get(candidate)
+            for k in node.keys():
+                if k.lower() == candidate.lower():
+                    folder_path = node.get(k)
+                    break
+            if folder_path:
                 break
         # if not found, set to source file path
         if not folder_path:
@@ -61,8 +65,9 @@ def extract_acls_from_json(data: Any, source_file: str) -> Iterable[Dict[str, An
 
         # find the ACL list value
         acl_list = None
-        for k in ("acl", "acls", "aces", "aclList"):
-            if k in node and isinstance(node[k], list):
+        for k in list(node.keys()):
+            kl = k.lower()
+            if kl in ("acl", "acls", "aces", "acllist", "access", "accesslist", "rights", "permissions") and isinstance(node[k], list):
                 acl_list = node[k]
                 break
         if not acl_list:
@@ -75,12 +80,28 @@ def extract_acls_from_json(data: Any, source_file: str) -> Iterable[Dict[str, An
             continue
 
         for ace in acl_list:
-            # normalize common fields; leave raw ACE when unknown
-            sid = ace.get("sid") if isinstance(ace, dict) else None
-            name = ace.get("name") if isinstance(ace, dict) else None
-            ace_type = ace.get("type") if isinstance(ace, dict) else None
-            mask = ace.get("mask") if isinstance(ace, dict) else None
-            inherited = ace.get("inherited") if isinstance(ace, dict) else None
+            # normalize common fields; support many possible key names produced
+            # by different exporters by checking lowercase key variants.
+            sid = None
+            name = None
+            ace_type = None
+            mask = None
+            inherited = None
+            if isinstance(ace, dict):
+                low = {k.lower(): v for k, v in ace.items()}
+
+                def pick(*cands):
+                    for c in cands:
+                        v = low.get(c.lower())
+                        if v is not None:
+                            return v
+                    return None
+
+                sid = pick('sid', 'principalid', 'accountid')
+                name = pick('name', 'displayname', 'identity', 'identityreference', 'account', 'accountname', 'principal', 'user', 'group', 'grantee')
+                ace_type = pick('type', 'ace_type', 'acetype')
+                mask = pick('mask', 'rights', 'permissions', 'access', 'accessmask')
+                inherited = pick('inherited', 'isInherited', 'isinherited', 'IsInherited')
             yield {
                 "source_file": source_file,
                 "folder_path": folder_path,
@@ -93,7 +114,7 @@ def extract_acls_from_json(data: Any, source_file: str) -> Iterable[Dict[str, An
             }
 
 
-def process_run(run_path: str, out_dir: str) -> None:
+def process_run(run_path: str, out_dir: str, preview: bool = False) -> None:
     run_path_p = Path(run_path)
     if not run_path_p.exists():
         raise SystemExit(f"Run path does not exist: {run_path}")
@@ -108,7 +129,9 @@ def process_run(run_path: str, out_dir: str) -> None:
 
     run_id = Path(run_path).name
     target_dir = out_dir_p / run_id
-    target_dir.mkdir(parents=True, exist_ok=True)
+    # create target directory only when not previewing (preview only lists paths)
+    if not preview:
+        target_dir.mkdir(parents=True, exist_ok=True)
 
     for f in tqdm(files, desc="processing files"):
         try:
@@ -125,6 +148,11 @@ def process_run(run_path: str, out_dir: str) -> None:
         df = pd.DataFrame(rows)
 
         out_file = target_dir / (f.stem + ".parquet")
+        # show what would be written
+        print(str(out_file))
+        if preview:
+            continue
+
         try:
             df.to_parquet(out_file, index=False)
         except Exception as e:
@@ -137,8 +165,9 @@ def main():
     parser = argparse.ArgumentParser(description="Ingest ACL JSON files to Parquet for DuckDB")
     parser.add_argument("--run-path", required=True, help="Path to a run directory (e.g., runs/run-20260202-124902)")
     parser.add_argument("--out-dir", required=True, help="Output directory for Parquet files")
+    parser.add_argument("--preview", action="store_true", help="Print the target Parquet paths and do not write files")
     args = parser.parse_args()
-    process_run(args.run_path, args.out_dir)
+    process_run(args.run_path, args.out_dir, preview=args.preview)
 
 
 if __name__ == "__main__":
