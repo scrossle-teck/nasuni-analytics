@@ -56,7 +56,7 @@ function Find-AclNodes([object]$node) {
     }
 }
 
-function Normalize-Ace($ace) {
+function ConvertTo-AceObject($ace) {
     # Accept hashtables, PSCustomObject, and similar as dict-like
     if ($ace -is [System.Collections.IDictionary] -or $ace -is [System.Management.Automation.PSObject]) { return $ace }
     return @{ raw = $ace }
@@ -90,7 +90,7 @@ foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
         if (-not $folderPath) { $folderPath = $f.FullName }
 
         foreach ($ace in $aclList) {
-            $aceDict = Normalize-Ace $ace
+            $aceDict = ConvertTo-AceObject $ace
             $aceName = $null
             if ($aceDict.PSObject.Properties.Name -contains 'name') { $aceName = $aceDict.name }
             if (-not $aceName -and ($aceDict.PSObject.Properties.Name -contains 'displayName')) { $aceName = $aceDict.displayName }
@@ -181,7 +181,7 @@ foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
         if (-not $folderPath) { $folderPath = $f.FullName }
 
         foreach ($ace in $aclList) {
-            $aceDict = Normalize-Ace $ace
+            $aceDict = ConvertTo-AceObject $ace
             $aceName = $aceDict.name -or $aceDict.displayName -or $aceDict.identity -or $aceDict.sid -or ''
             $aceSid = $aceDict.sid -or ''
             $aceMask = $aceDict.mask -or $aceDict.rights -or $aceDict.permissions -or ''
