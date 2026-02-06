@@ -9,7 +9,7 @@ Purpose: provide a concise reference for agents to quickly understand the reposi
 1. Read `docs/SESSION_SUMMARY_20260204.md` — session snapshot of what was produced on 2026-02-04.
 2. Read `docs/acl_vulnerability_patterns.md` — canonical vulnerability patterns and which identities are considered admin/service principals.
 3. Ensure `out/parquet/run-20260202-124902` is accessible (Parquet files are the canonical dataset for queries).
-4. Confirm `out/analysis/rule_matches.csv` and `out/analysis/scalability_metrics.csv` (new rule and metrics outputs) are available after running analytics.
+4. Confirm `out/analysis/rule_matches.csv` and `out/analysis/scalability_metrics.csv` (new rule and metrics outputs) are available after running analytics — `rule_matches.csv` includes a `severity` column for triage.
 5. Load `out/analysis/sensitive_shares_broad_perms.csv` and `out/analysis/shares_missing_admin_full.csv` for quick actionable hits.
 6. Inspect `scripts/ruleset.json` to see identity patterns used to exclude admin/service principals.
 
