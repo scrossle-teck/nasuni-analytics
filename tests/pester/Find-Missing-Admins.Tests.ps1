@@ -19,9 +19,9 @@ Describe 'find-missing-admins.ps1' {
             ) 
         }
 
-        $sample | ConvertTo-Json -Depth 5 | Out-File -FilePath (Join-Path $tmp 'folderacls\noadmin.json') -Encoding UTF8
-        $sample2 | ConvertTo-Json -Depth 5 | Out-File -FilePath (Join-Path $tmp 'folderacls\withadmin.json') -Encoding UTF8
-        $sample3 | ConvertTo-Json -Depth 5 | Out-File -FilePath (Join-Path $tmp 'folderacls\withadmin_read.json') -Encoding UTF8
+        $sample | ConvertTo-Json -Depth 20 | Out-File -FilePath (Join-Path $tmp 'folderacls\noadmin.json') -Encoding UTF8
+        $sample2 | ConvertTo-Json -Depth 20 | Out-File -FilePath (Join-Path $tmp 'folderacls\withadmin.json') -Encoding UTF8
+        $sample3 | ConvertTo-Json -Depth 20 | Out-File -FilePath (Join-Path $tmp 'folderacls\withadmin_read.json') -Encoding UTF8
 
         $repo = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
         $script = Join-Path $repo 'scripts\find-missing-admins.ps1'

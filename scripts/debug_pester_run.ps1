@@ -7,7 +7,7 @@ $fa = Join-Path $bRun 'folderacls'
 New-Item -ItemType Directory -Path $fa -Force | Out-Null
 
 $sample = @{ path = '\\nasuni\\share\\folder1'; acl = @(@{ sid = 'S-1-5-21-1000'; name = 'Domain Users'; type = 'allow'; mask = 'FullControl'; inherited = $false }) }
-$json = $sample | ConvertTo-Json -Depth 5
+$json = $sample | ConvertTo-Json -Depth 20
 Set-Content -Path (Join-Path $fa 'sample.json') -Value $json -Encoding UTF8
 
 $script = Join-Path $PSScriptRoot '..\scripts\find-broad-perms.ps1'
@@ -22,8 +22,8 @@ if (Test-Path (Join-Path $bRun 'broad.csv')) { Get-Content (Join-Path $bRun 'bro
 $arun = Join-Path $tmp 'run-access'
 $afa = Join-Path $arun 'folderacls'
 New-Item -ItemType Directory -Path $afa -Force | Out-Null
-$sample2 = @{ path = '\\nasuni\\share\\folder2'; acl = @(@{ sid = 'S-1-5-21-1000'; name = 'Domain Users'; type = 'allow'; mask = 'FullControl'; inherited = $false }) }
-Set-Content -Path (Join-Path $afa 'sample.json') -Value ($sample2 | ConvertTo-Json -Depth 5) -Encoding UTF8
+$sample2 = @{ path = '\nasuni\share\folder2'; acl = @(@{ sid = 'S-1-5-21-1000'; name = 'Domain Users'; type = 'allow'; mask = 'FullControl'; inherited = $false }) }
+Set-Content -Path (Join-Path $afa 'sample.json') -Value ($sample2 | ConvertTo-Json -Depth 20) -Encoding UTF8
 
 $script2 = Join-Path $PSScriptRoot '..\scripts\find-accessible-by.ps1'
 Write-Output "Running access script: $script2"

@@ -284,44 +284,52 @@ def apply_rules_df(df: pd.DataFrame, rules: List[Dict[str, Any]], min_severity: 
                 continue
 
             # identity matching: support match_admin_identities flag, identity_patterns, and identity_regex
-            id_match = True
+            # Default to not matching an identity unless the rule explicitly allows unconstrained matches.
+            id_match = False
+
+            # If rule explicitly wants to match admin identities, check compiled admin patterns first,
+            # then fall back to raw admin pattern checks.
             if rule.get("match_admin_identities"):
-                id_match = False
+                admin_compiled = rule.get("admin_identities_compiled") or []
                 admin_list = rule.get("admin_identities") or []
-                for p in admin_list:
-                    if not p:
+                for comp in admin_compiled:
+                    if not comp:
                         continue
                     try:
-                        if re.search(str(p), ace_name or "", flags=re.I):
+                        if comp.search(str(ace_name or "")) or (ace_sid and comp.search(str(ace_sid))):
                             id_match = True
                             break
-                    except re.error:
-                        if str(p).lower() in (ace_name or "").lower():
-                            id_match = True
-                            break
-                if not id_match and ace_sid:
+                    except Exception:
+                        continue
+                if not id_match:
                     for p in admin_list:
                         if not p:
                             continue
                         try:
-                            if re.search(str(p), str(ace_sid), flags=re.I):
+                            if re.search(str(p), ace_name or "", flags=re.I) or (ace_sid and re.search(str(p), str(ace_sid), flags=re.I)):
                                 id_match = True
                                 break
                         except re.error:
-                            if str(p).lower() in str(ace_sid).lower():
+                            if str(p).lower() in (ace_name or "").lower() or (ace_sid and str(p).lower() in str(ace_sid).lower()):
                                 id_match = True
                                 break
 
-            if not id_match and (rule.get("identity_patterns") or rule.get("identity_regex") or rule.get("identity_regex_compiled")):
+            # If the rule defines identity patterns/regex, require an explicit match against those.
+            elif rule.get("identity_patterns") or rule.get("identity_regex") or rule.get("identity_regex_compiled"):
                 id_match = _matches_identity(ace_name, rule)
-                if not id_match:
+                if not id_match and ace_sid:
                     irc = rule.get("identity_regex_compiled")
-                    if irc and ace_sid and irc.search(str(ace_sid)):
+                    if irc and irc.search(str(ace_sid)):
                         id_match = True
                     else:
                         ir = rule.get("identity_regex")
-                        if ir and ace_sid and re.search(str(ir), str(ace_sid)):
+                        if ir and re.search(str(ir), str(ace_sid)):
                             id_match = True
+
+            else:
+                # No identity constraints on the rule -> match any ACE
+                id_match = True
+
             if not id_match:
                 continue
 

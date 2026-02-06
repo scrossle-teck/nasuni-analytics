@@ -32,6 +32,9 @@ Set-StrictMode -Version Latest
 # load ACE helpers
 . "$PSScriptRoot\ace-utils.ps1"
 
+# JSON serialization depth for raw ACE output
+$JsonDepth = 20
+
 function Get-FolderAclFiles {
     param([string]$runPath)
     $fa = Join-Path $runPath 'folderacls'
@@ -67,7 +70,7 @@ $out = [System.Collections.Generic.List[object]]::new()
 # Load ruleset if available
 $rules = $null
 if ($Ruleset -and (Test-Path $Ruleset)) {
-    try { $rules = Get-Content -Raw -Path $Ruleset | ConvertFrom-Json -Depth 5 }
+    try { $rules = Get-Content -Raw -Path $Ruleset | ConvertFrom-Json -Depth $JsonDepth }
     catch { Write-Warning ("Failed to read ruleset {0}: {1}" -f $Ruleset, $_); $rules = $null }
 }
 # extract global admin identities for use in matching/excludes
@@ -81,7 +84,7 @@ foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
         Write-Output "Skipping non-ACL JSON artifact: $($f.Name)"
         continue
     }
-    try { $json = Get-Content -Raw -Path $f.FullName | ConvertFrom-Json -Depth 10 }
+    try { $json = Get-Content -Raw -Path $f.FullName | ConvertFrom-Json -Depth $JsonDepth }
     catch { Write-Warning "Failed to parse $($f.FullName): $_"; continue }
 
     Write-Output "Parsed JSON properties: $($json.PSObject.Properties.Name -join ',')"

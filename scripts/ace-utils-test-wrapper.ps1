@@ -14,4 +14,4 @@ $cases = @{
     'zero'        = @(Test-HighPermission 0)
 }
 
-($cases | ConvertTo-Json -Depth 5) | Write-Output
+($cases | ConvertTo-Json -Depth 20) | Write-Output

@@ -12,7 +12,7 @@ Describe 'find-broad-perms.ps1' {
             ) 
         }
 
-        $json = $sample | ConvertTo-Json -Depth 5
+        $json = $sample | ConvertTo-Json -Depth 20
         $sampleFile = Join-Path $folderacls 'sample.json'
         Set-Content -Path $sampleFile -Value $json -Encoding UTF8
 

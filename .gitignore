@@ -7,3 +7,7 @@ __pycache__/
 folderacls*/
 runs/
 out/
+results*/
+pester-debug/
+.pytest_cache/
+

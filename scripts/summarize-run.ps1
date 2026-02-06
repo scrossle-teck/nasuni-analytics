@@ -25,7 +25,7 @@ foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
     catch { Write-Warning "Failed to parse $($f.FullName): $_"; continue }
 
     # simple traversal to find ACL lists
-    $nodes = (ConvertTo-Json $json -Depth 5) | Out-Null
+    $nodes = (ConvertTo-Json $json -Depth 20) | Out-Null
     # reuse earlier heuristic by searching for lists under likely keys
     $text = Get-Content -Raw -Path $f.FullName
     $acesHere = 0

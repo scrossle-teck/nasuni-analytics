@@ -50,8 +50,8 @@ $JsonDepth = 20
 # Load ruleset if provided (allows using a rule id as the -Identity parameter)
 $rules = $null
 if ($Ruleset -and (Test-Path $Ruleset)) {
-    try { $rules = Get-Content -Raw -Path $Ruleset | ConvertFrom-Json -Depth 5 }
-    catch { Write-Warning ("Failed to read ruleset {0}: {1}" -f $Ruleset, $_); $rules = $null }
+    try { $rules = Get-Content -Raw -Path $Ruleset | ConvertFrom-Json -Depth $JsonDepth }
+    catch { Write-Warning (("Failed to read ruleset {0}: {1}") -f $Ruleset, $_); $rules = $null }
 }
 
 # load top-level admin identities from ruleset (if present)
@@ -59,7 +59,7 @@ $globalAdminIdentities = @()
 if ($rules -and $rules.admin_identities) { $globalAdminIdentities = $rules.admin_identities }
 
 foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
-    try { $json = Get-Content -Raw -Path $f.FullName | ConvertFrom-Json -Depth 10 }
+    try { $json = Get-Content -Raw -Path $f.FullName | ConvertFrom-Json -Depth $JsonDepth }
     catch { Write-Warning "Failed to parse $($f.FullName): $_"; continue }
 
     Write-Output "Parsed JSON properties: $($json.PSObject.Properties.Name -join ',')"

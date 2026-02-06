@@ -6,11 +6,12 @@ Describe 'summarize-run.ps1' {
         $folderacls = Join-Path $runPath 'folderacls'
         New-Item -ItemType Directory -Path $folderacls -Force | Out-Null
 
-        $sample = @{ path='\\nasuni\share\folder3'; acl=@(
-            @{ sid='S-1-5-21-4000'; name='UserA'; type='allow'; mask='Read'; inherited=$false }
-        ) }
+        $sample = @{ path = '\\nasuni\share\folder3'; acl = @(
+                @{ sid = 'S-1-5-21-4000'; name = 'UserA'; type = 'allow'; mask = 'Read'; inherited = $false }
+            ) 
+        }
 
-        $json = $sample | ConvertTo-Json -Depth 5
+        $json = $sample | ConvertTo-Json -Depth 20
         $sampleFile = Join-Path $folderacls 'sample.json'
         Set-Content -Path $sampleFile -Value $json -Encoding UTF8
 
