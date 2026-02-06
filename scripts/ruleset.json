@@ -4,26 +4,30 @@
       "id": "DomainUsersFullControl",
       "description": "Domain Users (or similar) granted FullControl/Modify",
       "identity_patterns": ["Domain Users", "Everyone", "BUILTIN\\\\Users"],
-      "perm_match": "(?i)full|fullcontrol|modify|write"
+      "perm_match": "(?i)full|fullcontrol|modify|write",
+      "severity": "high"
     },
     {
       "id": "EveryoneModify",
       "description": "Everyone granted modify or greater",
       "identity_patterns": ["Everyone"],
-      "perm_match": "(?i)modify|write|full"
+      "perm_match": "(?i)modify|write|full",
+      "severity": "high"
     }
     ,
     {
       "id": "AdminsPresent",
       "description": "Administrative groups present with elevated permissions",
       "identity_patterns": ["Administrators", "Domain Admins", "BUILTIN\\\\Administrators", "Admins", "S-1-22-1-0", "NT AUTHORITY\\\\SYSTEM", "S-1-5-18"],
-      "perm_match": "(?i)full|fullcontrol"
+      "perm_match": "(?i)full|fullcontrol",
+      "severity": "low"
     },
     {
       "id": "AdminsMissing",
       "description": "Metadata rule: expected admin identities for presence checks (requires a presence check)",
       "identity_patterns": ["Administrators", "Domain Admins", "BUILTIN\\\\Administrators", "Admins", "S-1-22-1-0", "NT AUTHORITY\\\\SYSTEM", "S-1-5-18"],
-      "expect_presence": true
+      "expect_presence": true,
+      "severity": "medium"
     }
     ,
     {
@@ -32,51 +36,62 @@
       "#note": "Matches ACEs granting full control to principals not in admin list; analysis should exclude known admin identities",
       "identity_exclude_patterns": ["Administrators", "Domain Admins", "BUILTIN\\\\Administrators", "NT AUTHORITY\\\\SYSTEM", "S-1-22-1-0", "S-1-5-18"],
       "perm_match": "(?i)full|fullcontrol|generic_all"
+      ,
+      "severity": "high"
     },
     {
       "id": "TakeOwnershipOrChangePerms",
       "description": "ACE grants TAKE_OWNERSHIP / WRITE_DAC / WRITE_OWNER or similar rights that allow ACL/ownership modification",
       "perm_match": "(?i)take.?own|write_dac|write_owner|change.?permissions|modify.?acl"
+      ,
+      "severity": "high"
     },
     {
       "id": "AuthUsersBroadPerms",
       "description": "Authenticated Users or Anonymous granted Modify/Write/Full",
       "identity_patterns": ["Authenticated Users", "NT AUTHORITY\\\\ANONYMOUS LOGON", "ANONYMOUS LOGON"],
-      "perm_match": "(?i)modify|write|full"
+      "perm_match": "(?i)modify|write|full",
+      "severity": "high"
     },
     {
       "id": "ServiceAccountFullControl",
       "description": "Service account (naming hints) granted FullControl or excessive rights",
       "identity_patterns": [".*\\$$", "(?i).*svc.*", "(?i).*service.*"],
-      "perm_match": "(?i)full|modify|write"
+      "perm_match": "(?i)full|modify|write",
+      "severity": "medium"
     },
     {
       "id": "OrphanedSIDsFullControl",
       "description": "Unresolvable or raw SIDs granted FullControl (possible deleted/orphaned accounts)",
       "identity_regex": "^S-1-",
-      "perm_match": "(?i)full|fullcontrol"
+      "perm_match": "(?i)full|fullcontrol",
+      "severity": "medium"
     },
     {
       "id": "ExternalPrincipalAccess",
       "description": "ACE identity looks like an external principal or email address (cross-tenant or external exposure)",
       "identity_patterns": ["@"],
-      "perm_match": "(?i)read|write|full|modify"
+      "perm_match": "(?i)read|write|full|modify",
+      "severity": "high"
     },
     {
       "id": "AclTooManyAces",
       "description": "ACL contains an excessive number of ACEs (threshold configurable)",
-      "ace_count_gt": 100
+      "ace_count_gt": 100,
+      "severity": "medium"
     },
     {
       "id": "DuplicateAceEntries",
       "description": "Duplicate or conflicting ACEs for the same principal within a single ACL (requires aggregation)",
-      "requires_aggregation": true
+      "requires_aggregation": true,
+      "severity": "low"
     },
     {
       "id": "SensitiveFoldersWrite",
       "description": "Write/Modify permissions on folders matching sensitive keywords (HR, Payroll, Finance, Legal, PII, Health, SOX)",
       "path_keywords": ["hr", "payroll", "finance", "legal", "pii", "health", "sox"],
-      "perm_match": "(?i)write|modify|full"
+      "perm_match": "(?i)write|modify|full",
+      "severity": "high"
     }
   ]
 }
