@@ -5,7 +5,12 @@
     "BUILTIN\\\\Administrators",
     "NT AUTHORITY\\\\SYSTEM",
     "S-1-22-1-0",
-    "S-1-5-18"
+    "S-1-5-18",
+    "TECKCOMINCO\\G-F-All-Full-Control",
+    "TECKCOMINCO\\G-R-Admin-ALL-Nasuni-Administrator",
+    "TECKCOMINCO\\g-r-admin-srv-*",
+    "TECKCOMINCO\\G-F-*-Admins",
+    "TECKCOMINCO\\trail_Domain Admins"
   ],
   "rules": [
     {

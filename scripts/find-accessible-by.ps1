@@ -41,7 +41,11 @@ function Find-AclNodes([object]$node) {
     elseif ($node -is [System.Collections.IEnumerable] -and -not ($node -is [string])) { foreach ($item in $node) { foreach ($child in Find-AclNodes $item) { $child } } }
 }
 
+# results collection
 $results = [System.Collections.Generic.List[object]]::new()
+
+# JSON serialization depth for raw ACE output
+$JsonDepth = 20
 
 # Load ruleset if provided (allows using a rule id as the -Identity parameter)
 $rules = $null
@@ -49,6 +53,10 @@ if ($Ruleset -and (Test-Path $Ruleset)) {
     try { $rules = Get-Content -Raw -Path $Ruleset | ConvertFrom-Json -Depth 5 }
     catch { Write-Warning ("Failed to read ruleset {0}: {1}" -f $Ruleset, $_); $rules = $null }
 }
+
+# load top-level admin identities from ruleset (if present)
+$globalAdminIdentities = @()
+if ($rules -and $rules.admin_identities) { $globalAdminIdentities = $rules.admin_identities }
 
 foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
     try { $json = Get-Content -Raw -Path $f.FullName | ConvertFrom-Json -Depth 10 }
@@ -83,11 +91,16 @@ foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
             $aceInherited = if ($aceObj -is [System.Collections.IDictionary]) { $aceObj.inherited -eq $true } else { $false }
             if ($aceInherited -and -not $IncludeInherited) { continue }
 
-            # Determine identity patterns: if Identity matches a rule id, use its identity_patterns
+            # Determine identity patterns: if Identity matches a rule id, use its identity_patterns or global admin list
             $identityPatterns = @()
             if ($rules -and $rules.rules) {
                 $matchedRule = $rules.rules | Where-Object { $_.id -ieq $Identity }
-                if ($matchedRule) { $identityPatterns = @($matchedRule.identity_patterns) }
+                if ($matchedRule) {
+                    if ($matchedRule.PSObject.Properties.Name -contains 'match_admin_identities' -and $matchedRule.match_admin_identities) {
+                        if ($globalAdminIdentities) { $identityPatterns = $globalAdminIdentities }
+                    }
+                    if ($identityPatterns.Count -eq 0 -and $matchedRule.PSObject.Properties.Name -contains 'identity_patterns') { $identityPatterns = @($matchedRule.identity_patterns) }
+                }
             }
             if ($identityPatterns.Count -eq 0) { $identityPatterns = @($Identity) }
 
@@ -105,7 +118,7 @@ foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
                         ace_name      = $aceName
                         ace_sid       = $aceSid
                         ace_inherited = $aceInherited
-                        ace_raw       = ($ace | ConvertTo-Json -Depth 5 -Compress)
+                        ace_raw       = ($ace | ConvertTo-Json -Depth $JsonDepth -Compress)
                     })
             }
         }
@@ -125,11 +138,16 @@ foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
             $aceInherited = if ($aceObj -is [System.Collections.IDictionary]) { $aceObj.inherited -eq $true } else { $false }
             if ($aceInherited -and -not $IncludeInherited) { continue }
 
-            # Determine identity patterns: support rule ids
+            # Determine identity patterns: support rule ids and admin list
             $identityPatterns = @()
             if ($rules -and $rules.rules) {
                 $matchedRule = $rules.rules | Where-Object { $_.id -ieq $Identity }
-                if ($matchedRule) { $identityPatterns = @($matchedRule.identity_patterns) }
+                if ($matchedRule) {
+                    if ($matchedRule.PSObject.Properties.Name -contains 'match_admin_identities' -and $matchedRule.match_admin_identities) {
+                        if ($globalAdminIdentities) { $identityPatterns = $globalAdminIdentities }
+                    }
+                    if ($identityPatterns.Count -eq 0 -and $matchedRule.PSObject.Properties.Name -contains 'identity_patterns') { $identityPatterns = @($matchedRule.identity_patterns) }
+                }
             }
             if ($identityPatterns.Count -eq 0) { $identityPatterns = @($Identity) }
 
@@ -146,7 +164,7 @@ foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
                         ace_name      = $aceName
                         ace_sid       = $aceSid
                         ace_inherited = $aceInherited
-                        ace_raw       = ($ace | ConvertTo-Json -Depth 5 -Compress)
+                        ace_raw       = ($ace | ConvertTo-Json -Depth $JsonDepth -Compress)
                     })
             }
         }

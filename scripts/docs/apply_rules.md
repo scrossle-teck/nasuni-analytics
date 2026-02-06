@@ -18,6 +18,16 @@ Notes:
   - `folder_path`, `ace_name`, `ace_sid`, `ace_mask`, `ace_inherited`
 - The rule engine normalizes list fields and compiles regexes; adding new rules should follow the structure in `scripts/ruleset.json`.
 
+## Admin identities
+
+The ruleset supports a top-level `admin_identities` array which centralizes identity patterns that should be treated as administrative/service principals (SIDs, group names, or wildcard patterns). Rules may opt into using this centralized list by setting `match_admin_identities: true` — for example, the `AdminsPresent` and `AdminsMissing` rules use this flag.
+
+Notes:
+
+- `admin_identities` entries are matched by the Python rule engine using regular-expression-style searches.
+- PowerShell scripts treat entries as wildcard/substring patterns (used with `-like`) so include `*` where appropriate.
+- Use `match_admin_identities: true` on rules that should evaluate membership against the centralized admin list, and use `identity_exclude_patterns` on rules that should explicitly exclude admin identities (the Python loader will also inject the global `admin_identities` into each rule as `admin_identities`).
+
 Example output and usage:
 
 ```csv

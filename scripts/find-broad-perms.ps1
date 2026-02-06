@@ -70,6 +70,9 @@ if ($Ruleset -and (Test-Path $Ruleset)) {
     try { $rules = Get-Content -Raw -Path $Ruleset | ConvertFrom-Json -Depth 5 }
     catch { Write-Warning ("Failed to read ruleset {0}: {1}" -f $Ruleset, $_); $rules = $null }
 }
+# extract global admin identities for use in matching/excludes
+$globalAdminIdentities = @()
+if ($rules -and $rules.admin_identities) { $globalAdminIdentities = $rules.admin_identities }
 
 $JsonDepth = 20
 foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
@@ -123,8 +126,12 @@ foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
             if ($rules -and $rules.rules) {
                 foreach ($rule in $rules.rules) {
                     $identityMatched = $false
+                    # determine identity patterns to test: either rule.identity_patterns or global admin list when requested
                     $idpats = @()
-                    if ($rule.PSObject.Properties.Name -contains 'identity_patterns') { $idpats = $rule.identity_patterns }
+                    if ($rule.PSObject.Properties.Name -contains 'match_admin_identities' -and $rule.match_admin_identities) {
+                        if ($globalAdminIdentities) { $idpats = $globalAdminIdentities }
+                    }
+                    if ($idpats.Count -eq 0 -and $rule.PSObject.Properties.Name -contains 'identity_patterns') { $idpats = $rule.identity_patterns }
                     foreach ($pat in $idpats) {
                         if ($aceName -and ($aceName -like "*$pat*")) { $identityMatched = $true; break }
                         if ($aceSid -and ($aceSid -like "*$pat*")) { $identityMatched = $true; break }
@@ -214,7 +221,10 @@ foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
                 foreach ($rule in $rules.rules) {
                     $identityMatched = $false
                     $idpats = @()
-                    if ($rule.PSObject.Properties.Name -contains 'identity_patterns') { $idpats = $rule.identity_patterns }
+                    if ($rule.PSObject.Properties.Name -contains 'match_admin_identities' -and $rule.match_admin_identities) {
+                        if ($globalAdminIdentities) { $idpats = $globalAdminIdentities }
+                    }
+                    if ($idpats.Count -eq 0 -and $rule.PSObject.Properties.Name -contains 'identity_patterns') { $idpats = $rule.identity_patterns }
                     foreach ($pat in $idpats) {
                         if ($aceName -and ($aceName -like "*$pat*")) { $identityMatched = $true; break }
                         if ($aceSid -and ($aceSid -like "*$pat*")) { $identityMatched = $true; break }
