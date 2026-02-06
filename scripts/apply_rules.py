@@ -31,6 +31,22 @@ def load_rules(path: Path = RULES_PATH) -> List[Dict[str, Any]]:
             nr["admin_identities"] = [str(x) for x in admin_list]
         else:
             nr["admin_identities"] = [str(admin_list)] if admin_list else []
+        # compile admin identity patterns into regex (treat '*' and '?' as wildcards)
+        admin_compiled: List[Any] = []
+        for a in nr.get("admin_identities", []):
+            pa = str(a)
+            try:
+                # if pattern contains wildcard chars, convert to regex
+                if "*" in pa or "?" in pa:
+                    esc = re.escape(pa)
+                    esc = esc.replace(r"\*", ".*").replace(r"\?", ".")
+                    admin_compiled.append(re.compile(esc, flags=re.I))
+                else:
+                    admin_compiled.append(re.compile(pa, flags=re.I))
+            except re.error:
+                # fallback: store None to indicate unusable pattern
+                admin_compiled.append(None)
+        nr["admin_identities_compiled"] = admin_compiled
         # normalize list fields into list[str]
         for list_key in ("identity_patterns", "identity_exclude_patterns", "path_keywords"):
             val = nr.get(list_key)
@@ -212,6 +228,19 @@ def apply_rules_df(df: pd.DataFrame, rules: List[Dict[str, Any]], min_severity: 
                 excl = [str(x) for x in cast(List[Any], excl_raw)] if isinstance(excl_raw, list) else [str(excl_raw)]
             # combine with global/admin identities injected by load_rules
             admin_excl = rule.get("admin_identities") or []
+            admin_compiled = rule.get("admin_identities_compiled") or []
+            # check compiled admin regex patterns first
+            for comp in admin_compiled:
+                if not comp:
+                    continue
+                try:
+                    if comp.search(str(ace_name or "")) or (ace_sid and comp.search(str(ace_sid))):
+                        excluded = True
+                        break
+                except Exception:
+                    continue
+            if excluded:
+                continue
             if admin_excl:
                 excl.extend([str(x) for x in admin_excl])
             for p in excl:
