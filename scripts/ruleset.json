@@ -26,14 +26,14 @@
     {
       "id": "AdminsPresent",
       "description": "Administrative groups present with elevated permissions",
-      "identity_patterns": ["Administrators", "Domain Admins", "BUILTIN\\\\Administrators", "Admins", "S-1-22-1-0", "NT AUTHORITY\\\\SYSTEM", "S-1-5-18"],
+      "match_admin_identities": true,
       "perm_match": "(?i)full|fullcontrol",
       "severity": "low"
     },
     {
       "id": "AdminsMissing",
       "description": "Metadata rule: expected admin identities for presence checks (requires a presence check)",
-      "identity_patterns": ["Administrators", "Domain Admins", "BUILTIN\\\\Administrators", "Admins", "S-1-22-1-0", "NT AUTHORITY\\\\SYSTEM", "S-1-5-18"],
+      "match_admin_identities": true,
       "expect_presence": true,
       "severity": "medium"
     }
@@ -42,7 +42,7 @@
       "id": "NonAdminFullControl",
       "description": "Non-admin identities granted FullControl",
       "#note": "Matches ACEs granting full control to principals not in admin list; analysis should exclude known admin identities",
-      "identity_exclude_patterns": ["Administrators", "Domain Admins", "BUILTIN\\\\Administrators", "NT AUTHORITY\\\\SYSTEM", "S-1-22-1-0", "S-1-5-18"],
+      "identity_exclude_patterns": [],
       "perm_match": "(?i)full|fullcontrol|generic_all"
       ,
       "severity": "high"

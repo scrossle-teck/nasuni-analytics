@@ -228,9 +228,36 @@ def apply_rules_df(df: pd.DataFrame, rules: List[Dict[str, Any]], min_severity: 
             if excluded:
                 continue
 
-            # identity patterns / regex (match against resolved name OR SID)
+            # identity matching: support match_admin_identities flag, identity_patterns, and identity_regex
             id_match = True
-            if rule.get("identity_patterns") or rule.get("identity_regex") or rule.get("identity_regex_compiled"):
+            if rule.get("match_admin_identities"):
+                id_match = False
+                admin_list = rule.get("admin_identities") or []
+                for p in admin_list:
+                    if not p:
+                        continue
+                    try:
+                        if re.search(str(p), ace_name or "", flags=re.I):
+                            id_match = True
+                            break
+                    except re.error:
+                        if str(p).lower() in (ace_name or "").lower():
+                            id_match = True
+                            break
+                if not id_match and ace_sid:
+                    for p in admin_list:
+                        if not p:
+                            continue
+                        try:
+                            if re.search(str(p), str(ace_sid), flags=re.I):
+                                id_match = True
+                                break
+                        except re.error:
+                            if str(p).lower() in str(ace_sid).lower():
+                                id_match = True
+                                break
+
+            if not id_match and (rule.get("identity_patterns") or rule.get("identity_regex") or rule.get("identity_regex_compiled")):
                 id_match = _matches_identity(ace_name, rule)
                 if not id_match:
                     irc = rule.get("identity_regex_compiled")

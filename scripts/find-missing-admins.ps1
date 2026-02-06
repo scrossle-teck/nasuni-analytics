@@ -81,8 +81,15 @@ foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
             if ($aceObj.PSObject.Properties.Name -contains 'inherited') { $aceInherited = $aceObj.inherited -eq $true } else { $aceInherited = $false }
             if ($aceInherited -and -not $IncludeInherited) { continue }
 
+            # determine identity patterns to check: support match_admin_identities + top-level admin list
+            $patterns = @()
+            if ($rule.PSObject.Properties.Name -contains 'match_admin_identities' -and $rule.match_admin_identities) {
+                if ($rs -and $rs.admin_identities) { $patterns = $rs.admin_identities }
+            }
+            if ($patterns.Count -eq 0 -and $rule.PSObject.Properties.Name -contains 'identity_patterns') { $patterns = $rule.identity_patterns }
+
             # check identity patterns and required permissions
-            foreach ($pat in $rule.identity_patterns) {
+            foreach ($pat in $patterns) {
                 if ($aceName -and ($aceName -like "*${pat}*")) {
                     # determine whether ACE meets permission requirement
                     $permOk = $false
@@ -117,7 +124,7 @@ foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
                     source_file         = $f.FullName
                     folder_path         = $folderPath
                     missing_rule        = $rule.id
-                    expected_identities = ($rule.identity_patterns -join ',')
+                    expected_identities = ($patterns -join ',')
                     found_identities    = ''
                 })
         }
