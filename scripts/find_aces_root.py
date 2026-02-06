@@ -1,3 +1,9 @@
+"""Scan ACE names and raw ACE blobs for occurrences of the word 'root'.
+
+Helps identify root-level ACEs and owner/admin patterns across the dataset.
+Usage: `python scripts/find_aces_root.py`
+"""
+
 from pathlib import Path
 import pandas as pd
 import json

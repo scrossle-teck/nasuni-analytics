@@ -1,3 +1,9 @@
+"""Find shares (folders) missing an admin identity with FullControl.
+
+Reads Parquet ACE rows and writes `out/analysis/shares_missing_admin_full.csv`.
+Usage: `python scripts/find_shares_missing_admin_full.py`
+"""
+
 from pathlib import Path
 import pandas as pd
 import json

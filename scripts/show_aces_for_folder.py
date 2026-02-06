@@ -1,3 +1,9 @@
+"""Utility to show ACEs for a specific `folder_path` from Parquet outputs.
+
+Edit `TARGET` in the script or modify to accept a CLI arg. Prints CSV to stdout.
+Usage: `python scripts/show_aces_for_folder.py`
+"""
+
 from pathlib import Path
 import pandas as pd
 

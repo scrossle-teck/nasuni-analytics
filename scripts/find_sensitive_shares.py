@@ -1,3 +1,10 @@
+"""Detect folders matching sensitive keywords that have broad permissions.
+
+Produces `out/analysis/sensitive_shares_broad_perms.csv`. Uses keyword patterns
+and excludes known admin/service identities.
+Usage: `python scripts/find_sensitive_shares.py`
+"""
+
 from pathlib import Path
 import pandas as pd
 import json

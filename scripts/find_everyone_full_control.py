@@ -1,3 +1,9 @@
+"""Extract ACEs where 'Everyone' (or equivalent) has FullControl.
+
+Writes `out/analysis/everyone_full_control.csv` containing matching ACE rows.
+Usage: `python scripts/find_everyone_full_control.py`
+"""
+
 from pathlib import Path
 import pandas as pd
 import json

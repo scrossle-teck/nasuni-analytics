@@ -1,3 +1,9 @@
+"""Inspect Parquet files for rows missing `folder_path`.
+
+Generates `out/analysis/nan_rows_debug.csv` for debugging ingestion anomalies.
+Usage: `python scripts/inspect_nan_rows.py`
+"""
+
 from pathlib import Path
 import pandas as pd
 import json

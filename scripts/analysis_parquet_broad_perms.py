@@ -1,3 +1,10 @@
+"""Parquet-first analysis to compute broad-permission summaries.
+
+Reads Parquet ACE files and prints top identities, folder counts, and other
+exploratory stats to stdout.
+Usage: `python scripts/analysis_parquet_broad_perms.py`
+"""
+
 from pathlib import Path
 import json
 import pandas as pd

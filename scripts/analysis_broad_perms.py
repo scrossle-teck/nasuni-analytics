@@ -1,3 +1,10 @@
+"""Analyze existing CSV `out/broad-perms.csv` to surface top identities and
+folders with multiple broad ACEs.
+
+Reads `out/broad-perms.csv` and prints ranked summaries to stdout.
+Usage: `python scripts/analysis_broad_perms.py`
+"""
+
 import csv
 from collections import defaultdict
 from pathlib import Path
