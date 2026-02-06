@@ -72,6 +72,21 @@ def load_rules(path: Path = RULES_PATH) -> List[Dict[str, Any]]:
         else:
             nr["identity_regex_compiled"] = None
 
+        # compile identity_patterns into regex (support wildcards '*' and '?')
+        ipc: List[Any] = []
+        for p in nr.get("identity_patterns", []):
+            pat = str(p)
+            try:
+                if "*" in pat or "?" in pat:
+                    esc = re.escape(pat)
+                    esc = esc.replace(r"\*", ".*").replace(r"\?", ".")
+                    ipc.append(re.compile(esc, flags=re.I))
+                else:
+                    ipc.append(re.compile(pat, flags=re.I))
+            except re.error:
+                ipc.append(None)
+        nr["identity_patterns_compiled"] = ipc
+
         # ensure perm_match is a string if present
         pm = nr.get("perm_match")
         nr["perm_match"] = str(pm) if pm is not None else None
@@ -102,6 +117,17 @@ def resolve_name_from_row(row: pd.Series) -> str:
 
 def _matches_identity(name: str, rule: Dict[str, Any]) -> bool:
     nl = (name or "").lower()
+    # try compiled identity_patterns first (supports wildcards -> regex)
+    ipc = rule.get("identity_patterns_compiled") or []
+    for comp in ipc:
+        if not comp:
+            continue
+        try:
+            if comp.search(name or ""):
+                return True
+        except Exception:
+            continue
+
     # include positive patterns (normalized to list[str])
     pats_raw = rule.get("identity_patterns")
     if not pats_raw:

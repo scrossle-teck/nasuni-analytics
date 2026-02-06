@@ -69,7 +69,7 @@
     {
       "id": "ServiceAccountFullControl",
       "description": "Service account (naming hints) granted FullControl or excessive rights",
-      "identity_patterns": [".*\\$$", "(?i).*svc.*", "(?i).*service.*"],
+      "identity_patterns": ["*$", "*svc*", "*service*"],
       "perm_match": "(?i)full|modify|write",
       "severity": "medium"
     },
