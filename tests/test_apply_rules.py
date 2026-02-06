@@ -62,3 +62,52 @@ def test_duplicate_ace_entries_matches():
     ])
     matches = apply_rules_df(df, rules)
     assert any(m['rule_id'] == 'DuplicateAceEntries' for m in matches)
+
+
+def test_service_account_fullcontrol_matches():
+    rules = load_rules()
+    df = pd.DataFrame([
+        make_row('\\\\f\\svc\\data', 'backup_svc', 'S-1-5-21-500', 'FullControl'),
+        make_row('\\\\f\\svc\\data', 'serviceAccount$', 'S-1-5-21-501', 'FullControl'),
+    ])
+    matches = apply_rules_df(df, rules)
+    assert any(m['rule_id'] == 'ServiceAccountFullControl' for m in matches)
+
+
+def test_auth_users_broad_perms_matches():
+    rules = load_rules()
+    df = pd.DataFrame([
+        make_row('\\\\f\\share\\pub', 'Authenticated Users', 'S-1-5-11', 'Modify'),
+        make_row('\\\\f\\share\\pub', 'ANONYMOUS LOGON', 'S-1-5-7', 'Write'),
+    ])
+    matches = apply_rules_df(df, rules)
+    assert any(m['rule_id'] == 'AuthUsersBroadPerms' for m in matches)
+
+
+def test_takeownership_or_changeperms_matches():
+    rules = load_rules()
+    df = pd.DataFrame([
+        make_row('\\\\f\\share\\secure', 'Alice', 'S-1-5-21-600', 'WRITE_OWNER'),
+        make_row('\\\\f\\share\\secure', 'Bob', 'S-1-5-21-601', 'Write_DAC'),
+    ])
+    matches = apply_rules_df(df, rules)
+    assert any(m['rule_id'] == 'TakeOwnershipOrChangePerms' for m in matches)
+
+
+def test_external_principal_access_matches():
+    rules = load_rules()
+    df = pd.DataFrame([
+        make_row('\\\\f\\ext\\docs', 'user@example.com', 'S-1-5-21-700', 'Read'),
+    ])
+    matches = apply_rules_df(df, rules)
+    assert any(m['rule_id'] == 'ExternalPrincipalAccess' for m in matches)
+
+
+def test_admin_not_flagged_as_nonadmin_fullcontrol():
+    rules = load_rules()
+    df = pd.DataFrame([
+        make_row('\\\\f\\admin\\root', 'Administrators', 'S-1-5-32-544', 'FullControl'),
+    ])
+    matches = apply_rules_df(df, rules)
+    # should not flag NonAdminFullControl for known admin identities
+    assert not any(m['rule_id'] == 'NonAdminFullControl' for m in matches)
