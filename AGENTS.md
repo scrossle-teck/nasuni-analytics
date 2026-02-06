@@ -9,8 +9,9 @@ Purpose: provide a concise reference for agents to quickly understand the reposi
 1. Read `docs/SESSION_SUMMARY_20260204.md` — session snapshot of what was produced on 2026-02-04.
 2. Read `docs/acl_vulnerability_patterns.md` — canonical vulnerability patterns and which identities are considered admin/service principals.
 3. Ensure `out/parquet/run-20260202-124902` is accessible (Parquet files are the canonical dataset for queries).
-4. Load `out/analysis/sensitive_shares_broad_perms.csv` and `out/analysis/shares_missing_admin_full.csv` for quick actionable hits.
-5. Inspect `scripts/ruleset.json` to see identity patterns used to exclude admin/service principals.
+4. Confirm `out/analysis/rule_matches.csv` and `out/analysis/scalability_metrics.csv` (new rule and metrics outputs) are available after running analytics.
+5. Load `out/analysis/sensitive_shares_broad_perms.csv` and `out/analysis/shares_missing_admin_full.csv` for quick actionable hits.
+6. Inspect `scripts/ruleset.json` to see identity patterns used to exclude admin/service principals.
 
 ## Quickstart (run these locally in PowerShell)
 
@@ -22,6 +23,8 @@ python .\scripts\ingest_duckdb.py --run runs/run-20260202-124902     # ingest JS
 python .\scripts\find_everyone_full_control.py                    # generate everyone_full_control.csv
 python .\scripts\find_sensitive_shares.py                         # generate sensitive_shares_broad_perms.csv
 python .\scripts\find_shares_missing_admin_full.py               # generate shares_missing_admin_full.csv
+python .\scripts\collate_scalability_metrics.py --run runs/run-20260202-124902 --out out/analysis  # new: scalability metrics
+python .\scripts\apply_rules.py --run out/parquet/run-20260202-124902 --out out/analysis/rule_matches.csv  # new: rule engine
 ```
 
 Run helper: `scripts/run_examples.ps1` contains example PowerShell commands to activate the venv and run common scripts.
@@ -60,14 +63,19 @@ Agents should assume these columns exist or use the script helpers that normaliz
 - `scripts/analysis_parquet_broad_perms.py` — alternative/parquet-first analysis to compute top identities and broad-perm summaries.
 - `scripts/show_aces_for_folder.py` — utility to display ACEs for a specific folder path from Parquet.
 - `scripts/find_aces_root.py` — helper to surface ACEs at share roots (useful for admin owner checks).
+- `scripts/collate_scalability_metrics.py` — collate run-level scalability metrics (counts of folder ACL files, ACL entries, ACEs) and per-host/per-volume breakdown CSVs (`out/analysis/scalability_metrics.csv`, `scalability_per_host.csv`, `scalability_per_volume.csv`).
+- `scripts/find_unknown_volume_entries.py` — diagnostics to find ACL entries that fail to map to a known volume (writes `out/analysis/unknown_volume_entries.csv`).
+- `scripts/apply_rules.py` — rule engine that loads `scripts/ruleset.json`, evaluates rules against Parquet/ACE rows, and writes `out/analysis/rule_matches.csv` (CLi: `--run` and `--out`).
 
 ## Rules & configuration
 
 - `scripts/ruleset.json` — JSON rules used by PowerShell/Python checks; contains identity patterns and permission-match rules. Updated to include SIDs such as `S-1-22-1-0` (appliance root) and `S-1-5-18` (SYSTEM).
+- `scripts/ruleset.json` — JSON rules used by PowerShell/Python checks; contains identity patterns and permission-match rules. Updated with additional rules (NonAdminFullControl, SensitiveFoldersWrite, DuplicateAceEntries, etc.) and SIDs such as `S-1-22-1-0` (appliance root) and `S-1-5-18` (SYSTEM).
 
 ## Environment & dependencies
 
 - Minimal Python packages required (see `requirements.txt`): `pandas`, `pyarrow`, `duckdb`.
+- Minimal Python packages required (see `requirements.txt`): `pandas`, `pyarrow`, `duckdb`. For improved static typing when editing, `pandas-stubs` is included as a dev dependency.
 - Create/activate a venv (Windows PowerShell):
 
 ```powershell
@@ -81,6 +89,7 @@ pip install -r requirements.txt
 - Prefer the Parquet-backed scripts for analysis (Parquet is normalized and faster for DuckDB/pandas queries).
 - When detecting admin/service identities, use the explicit list documented in `docs/acl_vulnerability_patterns.md` and `scripts/ruleset.json` to avoid false positives.
 - For temporal analysis, keep a copy of previous run Parquet/CSV outputs to enable diffs and spike detection.
+- The orchestration script `scripts/run-analytics.ps1` was updated to call the Python rule engine (`apply_rules.py`), prefer a `.venv` Python, and return a non-zero exit code on failures (CI-friendly). Use it as the single entrypoint for packaged analyses.
 
 ## DuckDB / quick inspect example
 
