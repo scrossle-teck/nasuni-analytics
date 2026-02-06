@@ -77,6 +77,9 @@ Detailed docs for each script are available under `scripts/docs/`:
 - `scripts/docs/ace-utils.md`
 - `scripts/docs/ingest_duckdb.md`
 
+- `scripts/docs/collate_scalability_metrics.md`
+- `scripts/docs/find_unknown_volume_entries.md`
+
 ## Tests
 
 - **PowerShell (Pester):**
