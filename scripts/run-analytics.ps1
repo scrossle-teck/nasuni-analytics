@@ -19,7 +19,8 @@ param(
     [string]$OutDir = "results",
     [string[]]$Checks = @('BroadPerms', 'Summarize'),
     [string]$Identity,
-    [string]$Ruleset = (Join-Path $PSScriptRoot 'ruleset.json')
+    [string]$Ruleset = (Join-Path $PSScriptRoot 'ruleset.json'),
+    [string]$Python = ''
 )
 
 if (-not (Test-Path $RunPath)) { Throw "RunPath not found: $RunPath" }
@@ -85,13 +86,29 @@ $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..')
 $parquetDir = Join-Path $repoRoot (Join-Path 'out' (Join-Path 'parquet' $runName))
 $ruleMatchesOut = Join-Path $OutDir 'rule_matches.csv'
 if (Test-Path $parquetDir) {
+    # determine python executable: prefer provided -Python, then .venv, then system python
+    $pythonExe = $Python
+    if (-not $pythonExe -or $pythonExe -eq '') {
+        $venvWin = Join-Path $repoRoot '.venv\Scripts\python.exe'
+        $venvNix = Join-Path $repoRoot '.venv/bin/python'
+        if (Test-Path $venvWin) { $pythonExe = $venvWin }
+        elseif (Test-Path $venvNix) { $pythonExe = $venvNix }
+        else { $pythonExe = 'python' }
+    }
+
+    Write-Output "Invoking apply_rules with python: $pythonExe"
     try {
-        # call Python apply_rules.py
-        & python "${PSScriptRoot}\apply_rules.py" --run $parquetDir --rules $Ruleset --out $ruleMatchesOut
+        & $pythonExe "${PSScriptRoot}\apply_rules.py" --run $parquetDir --rules $Ruleset --out $ruleMatchesOut
+        $exit = $LASTEXITCODE
+        if ($exit -ne 0) {
+            Write-Error "apply_rules.py exited with code $exit"
+            Exit $exit
+        }
         Write-Output "Rule matches written to: $ruleMatchesOut"
     }
     catch {
-        Write-Warning ("Failed to run apply_rules.py: {0}" -f $_)
+        Write-Error ("Failed to run apply_rules.py: {0}" -f $_)
+        Exit 2
     }
 }
 else {
