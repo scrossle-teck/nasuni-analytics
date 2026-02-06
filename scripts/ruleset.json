@@ -25,5 +25,58 @@
       "identity_patterns": ["Administrators", "Domain Admins", "BUILTIN\\\\Administrators", "Admins", "S-1-22-1-0", "NT AUTHORITY\\\\SYSTEM", "S-1-5-18"],
       "expect_presence": true
     }
+    ,
+    {
+      "id": "NonAdminFullControl",
+      "description": "Non-admin identities granted FullControl",
+      "#note": "Matches ACEs granting full control to principals not in admin list; analysis should exclude known admin identities",
+      "identity_exclude_patterns": ["Administrators", "Domain Admins", "BUILTIN\\\\Administrators", "NT AUTHORITY\\\\SYSTEM", "S-1-22-1-0", "S-1-5-18"],
+      "perm_match": "(?i)full|fullcontrol|generic_all"
+    },
+    {
+      "id": "TakeOwnershipOrChangePerms",
+      "description": "ACE grants TAKE_OWNERSHIP / WRITE_DAC / WRITE_OWNER or similar rights that allow ACL/ownership modification",
+      "perm_match": "(?i)take.?own|write_dac|write_owner|change.?permissions|modify.?acl"
+    },
+    {
+      "id": "AuthUsersBroadPerms",
+      "description": "Authenticated Users or Anonymous granted Modify/Write/Full",
+      "identity_patterns": ["Authenticated Users", "NT AUTHORITY\\\\ANONYMOUS LOGON", "ANONYMOUS LOGON"],
+      "perm_match": "(?i)modify|write|full"
+    },
+    {
+      "id": "ServiceAccountFullControl",
+      "description": "Service account (naming hints) granted FullControl or excessive rights",
+      "identity_patterns": [".*\\$$", "(?i).*svc.*", "(?i).*service.*"],
+      "perm_match": "(?i)full|modify|write"
+    },
+    {
+      "id": "OrphanedSIDsFullControl",
+      "description": "Unresolvable or raw SIDs granted FullControl (possible deleted/orphaned accounts)",
+      "identity_regex": "^S-1-",
+      "perm_match": "(?i)full|fullcontrol"
+    },
+    {
+      "id": "ExternalPrincipalAccess",
+      "description": "ACE identity looks like an external principal or email address (cross-tenant or external exposure)",
+      "identity_patterns": ["@"],
+      "perm_match": "(?i)read|write|full|modify"
+    },
+    {
+      "id": "AclTooManyAces",
+      "description": "ACL contains an excessive number of ACEs (threshold configurable)",
+      "ace_count_gt": 100
+    },
+    {
+      "id": "DuplicateAceEntries",
+      "description": "Duplicate or conflicting ACEs for the same principal within a single ACL (requires aggregation)",
+      "requires_aggregation": true
+    },
+    {
+      "id": "SensitiveFoldersWrite",
+      "description": "Write/Modify permissions on folders matching sensitive keywords (HR, Payroll, Finance, Legal, PII, Health, SOX)",
+      "path_keywords": ["hr", "payroll", "finance", "legal", "pii", "health", "sox"],
+      "perm_match": "(?i)write|modify|full"
+    }
   ]
 }
