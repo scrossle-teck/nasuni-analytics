@@ -21,9 +21,16 @@ def load_rules(path: Path = RULES_PATH) -> List[Dict[str, Any]]:
     with path.open("r", encoding="utf-8") as fh:
         j = json.load(fh)
     raw_rules = j.get("rules", [])
+    # normalize top-level admin identities (global excludes) and inject into each rule
+    admin_list = j.get("admin_identities") or j.get("admin_id_patterns") or []
     norm_rules: List[Dict[str, Any]] = []
     for r in raw_rules:
         nr: Dict[str, Any] = dict(r)
+        # attach global admin list to each rule for ease of use during matching
+        if isinstance(admin_list, list):
+            nr["admin_identities"] = [str(x) for x in admin_list]
+        else:
+            nr["admin_identities"] = [str(admin_list)] if admin_list else []
         # normalize list fields into list[str]
         for list_key in ("identity_patterns", "identity_exclude_patterns", "path_keywords"):
             val = nr.get(list_key)
@@ -200,10 +207,13 @@ def apply_rules_df(df: pd.DataFrame, rules: List[Dict[str, Any]], min_severity: 
             # identity_exclude_patterns
             excl_raw = rule.get("identity_exclude_patterns")
             excluded = False
+            excl: List[str] = []
             if excl_raw:
-                excl = cast(List[Any], excl_raw) if isinstance(excl_raw, list) else [excl_raw]
-            else:
-                excl = []
+                excl = [str(x) for x in cast(List[Any], excl_raw)] if isinstance(excl_raw, list) else [str(excl_raw)]
+            # combine with global/admin identities injected by load_rules
+            admin_excl = rule.get("admin_identities") or []
+            if admin_excl:
+                excl.extend([str(x) for x in admin_excl])
             for p in excl:
                 if not p:
                     continue
