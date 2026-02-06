@@ -79,4 +79,23 @@ foreach ($c in $Checks) {
     }
 }
 
+# After rule-driven checks, also run the Python rule engine (if Parquet exists) to produce a consolidated rule_matches CSV
+$runName = Split-Path -Leaf $RunPath
+$repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..')
+$parquetDir = Join-Path $repoRoot (Join-Path 'out' (Join-Path 'parquet' $runName))
+$ruleMatchesOut = Join-Path $OutDir 'rule_matches.csv'
+if (Test-Path $parquetDir) {
+    try {
+        # call Python apply_rules.py
+        & python "${PSScriptRoot}\apply_rules.py" --run $parquetDir --rules $Ruleset --out $ruleMatchesOut
+        Write-Output "Rule matches written to: $ruleMatchesOut"
+    }
+    catch {
+        Write-Warning ("Failed to run apply_rules.py: {0}" -f $_)
+    }
+}
+else {
+    Write-Warning "Parquet directory not found; skipping apply_rules invocation: $parquetDir"
+}
+
 Write-Output "Run analytics complete. Outputs in: $OutDir"

@@ -187,6 +187,7 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--run", "-r", type=Path, default=Path("out/parquet/run-20260202-124902"))
     p.add_argument("--rules", "-R", type=Path, default=RULES_PATH)
+    p.add_argument("--out", "-o", type=Path, default=None, help="Output CSV path for rule matches")
     args = p.parse_args()
 
     rules = load_rules(args.rules)
@@ -208,3 +209,16 @@ if __name__ == "__main__":
     df = pd.concat(dfs, ignore_index=True)
     matches = apply_rules_df(df, rules)
     print(f"Found {len(matches)} matches")
+    if args.out:
+        outp = args.out
+        outp.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            import pandas as _pd
+            _pd.DataFrame(matches).to_csv(outp, index=False)
+            print(f"Wrote rule matches to {outp}")
+        except Exception:
+            # fallback: write minimal CSV
+            with outp.open("w", encoding="utf-8", newline="") as fh:
+                fh.write("rule_id,folder_path,ace_name,ace_sid,ace_mask,ace_inherited\n")
+                for m in matches:
+                    fh.write(','.join([str(m.get(k, '')) for k in ('rule_id','folder_path','ace_name','ace_sid','ace_mask','ace_inherited')]) + "\n")
