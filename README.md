@@ -45,6 +45,37 @@ $ runPath = 'runs/run-20260202-124902'
 ./scripts/run-analytics.ps1 -RunPath .\runs\run-20260202-124902 -OutDir .\out -Checks BroadPerms,AccessibleBy,Summarize -Identity 'Domain Users' -Ruleset .\scripts\ruleset.json
 ```
 
+Examples: run-analytics with repo venv or explicit Python
+
+- Use the repository virtualenv (Windows PowerShell):
+
+```powershell
+& .\.venv\Scripts\Activate.ps1
+./scripts/run-analytics.ps1 -RunPath .\runs\run-20260202-124902 -OutDir .\out -Checks BroadPerms,Summarize
+```
+
+- Invoke `run-analytics.ps1` while explicitly specifying a Python executable (useful for CI or non-standard envs):
+
+```powershell
+./scripts/run-analytics.ps1 -RunPath .\runs\run-20260202-124902 -OutDir .\out -Python C:\path\to\python.exe
+```
+
+- Linux / macOS examples (CI runners or containers):
+
+Use the repository virtualenv (bash):
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+./scripts/run-analytics.ps1 -RunPath ./runs/run-20260202-124902 -OutDir ./out -Checks BroadPerms,Summarize
+```
+
+Invoke `run-analytics.ps1` while explicitly specifying a Python executable (Linux/macOS):
+
+```bash
+./scripts/run-analytics.ps1 -RunPath ./runs/run-20260202-124902 -OutDir ./out -Python /usr/bin/python3
+```
+
 - **Run a single rule by id:**
 
 ```powershell
