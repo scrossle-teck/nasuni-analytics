@@ -3,3 +3,4 @@ pandas>=1.5
 pyarrow>=8.0
 tqdm
 pytest
+pandas-stubs

@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, cast, Tuple
 
 import pandas as pd
 
@@ -24,13 +24,15 @@ def load_rules(path: Path = RULES_PATH) -> List[Dict[str, Any]]:
     norm_rules: List[Dict[str, Any]] = []
     for r in raw_rules:
         nr: Dict[str, Any] = dict(r)
-        # normalize list fields
+        # normalize list fields into list[str]
         for list_key in ("identity_patterns", "identity_exclude_patterns", "path_keywords"):
-            val = nr.get(list_key) or []
-            if isinstance(val, list):
-                nr[list_key] = [str(x) for x in val]
+            val = nr.get(list_key)
+            if val is None:
+                nr[list_key] = []
+            elif isinstance(val, list):
+                nr[list_key] = [str(x) for x in cast(List[Any], val)]
             else:
-                nr[list_key] = [str(val)] if val is not None else []
+                nr[list_key] = [str(val)]
         # normalize ace_count_gt
         acg = nr.get("ace_count_gt")
         try:
@@ -65,8 +67,9 @@ def resolve_name_from_row(row: pd.Series) -> str:
     try:
         obj = json.loads(raw) if isinstance(raw, str) else raw
         if isinstance(obj, dict):
+            objd = cast(Dict[str, Any], obj)
             for key in ("name", "displayName", "identity", "account", "accountName", "sid"):
-                v = obj.get(key) or obj.get(key.lower())
+                v = objd.get(key) or objd.get(key.lower())
                 if v:
                     return str(v).strip()
     except Exception:
@@ -77,7 +80,14 @@ def resolve_name_from_row(row: pd.Series) -> str:
 def _matches_identity(name: str, rule: Dict[str, Any]) -> bool:
     nl = (name or "").lower()
     # include positive patterns (normalized to list[str])
-    pats = rule.get("identity_patterns") or []
+    pats_raw = rule.get("identity_patterns")
+    if not pats_raw:
+        pats: List[str] = []
+    elif isinstance(pats_raw, list):
+        pats = [str(x) for x in cast(List[Any], pats_raw)]
+    else:
+        pats = [str(pats_raw)]
+
     for p in pats:
         if not p:
             continue
@@ -140,7 +150,11 @@ def apply_rules_df(df: pd.DataFrame, rules: List[Dict[str, Any]]) -> List[Dict[s
     folder_counts = df.groupby("folder_path").size().to_dict()
     # duplicates per folder+identity
     dup_map: Dict[str, Dict[str, int]] = {}
-    for (fld, nm), g in df.groupby(["folder_path", "res_name"]):
+    for group in df.groupby(["folder_path", "res_name"]):
+        tup, g = cast(Tuple[Tuple[Any, Any], pd.DataFrame], group)
+        # groupby may yield non-str types; coerce
+        fld = str(tup[0])
+        nm = str(tup[1])
         c = len(g)
         if c > 1:
             dup_map.setdefault(fld, {})[nm] = c
@@ -160,21 +174,22 @@ def apply_rules_df(df: pd.DataFrame, rules: List[Dict[str, Any]]) -> List[Dict[s
         for rule in rules:
             rid = rule.get("id")
             # path keyword checks
-            pk = rule.get("path_keywords") or []
-            if pk:
+            # path keyword checks (path_keywords normalized by load_rules)
+            pk_raw = rule.get("path_keywords")
+            if pk_raw:
                 fl = (folder or "").lower()
-                # normalize pk to strings
-                pkl = [str(k).lower() for k in pk]
+                if isinstance(pk_raw, list):
+                    pkl = [str(k).lower() for k in cast(List[Any], pk_raw)]
+                else:
+                    pkl = [str(pk_raw).lower()]
                 if not any(k in fl for k in pkl):
                     continue
 
             # ace_count_gt
-            if rule.get("ace_count_gt") is not None:
-                try:
-                    thr = int(rule.get("ace_count_gt"))
-                except Exception:
-                    thr = None
-                if thr is None or (folder_counts.get(folder, 0) <= thr):
+            # ace_count_gt was normalized by load_rules to int or None
+            thr_val = rule.get("ace_count_gt")
+            if isinstance(thr_val, int):
+                if folder_counts.get(folder, 0) <= thr_val:
                     continue
 
             # requires_aggregation: check duplicates map
@@ -183,8 +198,12 @@ def apply_rules_df(df: pd.DataFrame, rules: List[Dict[str, Any]]) -> List[Dict[s
                     continue
 
             # identity_exclude_patterns
-            excl = rule.get("identity_exclude_patterns") or []
+            excl_raw = rule.get("identity_exclude_patterns")
             excluded = False
+            if excl_raw:
+                excl = cast(List[Any], excl_raw) if isinstance(excl_raw, list) else [excl_raw]
+            else:
+                excl = []
             for p in excl:
                 if not p:
                     continue
@@ -227,7 +246,7 @@ def apply_rules_df(df: pd.DataFrame, rules: List[Dict[str, Any]]) -> List[Dict[s
             # duplicate detection: if requires_aggregation, ensure duplicate exists for this identity
             if rule.get("requires_aggregation"):
                 d = dup_map.get(folder, {})
-                if not d.get(ace_name):
+                if not d.get(str(ace_name)):
                     continue
 
             # passed rule
@@ -258,7 +277,7 @@ if __name__ == "__main__":
     if not files:
         print("No parquet files found")
         raise SystemExit(1)
-    dfs = []
+    dfs: List[pd.DataFrame] = []
     for f in files:
         try:
             df = pd.read_parquet(f)
