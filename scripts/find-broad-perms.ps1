@@ -117,7 +117,9 @@ foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
             if ($rules -and $rules.rules) {
                 foreach ($rule in $rules.rules) {
                     $identityMatched = $false
-                    foreach ($pat in $rule.identity_patterns) {
+                    $idpats = @()
+                    if ($rule.PSObject.Properties.Name -contains 'identity_patterns') { $idpats = $rule.identity_patterns }
+                    foreach ($pat in $idpats) {
                         if ($aceName -and ($aceName -like "*$pat*")) { $identityMatched = $true; break }
                         if ($aceSid -and ($aceSid -like "*$pat*")) { $identityMatched = $true; break }
                     }
@@ -205,7 +207,9 @@ foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
             if ($rules -and $rules.rules) {
                 foreach ($rule in $rules.rules) {
                     $identityMatched = $false
-                    foreach ($pat in $rule.identity_patterns) {
+                    $idpats = @()
+                    if ($rule.PSObject.Properties.Name -contains 'identity_patterns') { $idpats = $rule.identity_patterns }
+                    foreach ($pat in $idpats) {
                         if ($aceName -and ($aceName -like "*$pat*")) { $identityMatched = $true; break }
                         if ($aceSid -and ($aceSid -like "*$pat*")) { $identityMatched = $true; break }
                     }
