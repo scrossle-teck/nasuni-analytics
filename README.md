@@ -54,6 +54,12 @@ Examples: run-analytics with repo venv or explicit Python
 ./scripts/run-analytics.ps1 -RunPath .\runs\run-20260202-124902 -OutDir .\out -Checks BroadPerms,Summarize
 ```
 
+For development typing and linting helpers, install developer requirements:
+
+```powershell
+pip install -r requirements-dev.txt
+```
+
 - Invoke `run-analytics.ps1` while explicitly specifying a Python executable (useful for CI or non-standard envs):
 
 ```powershell

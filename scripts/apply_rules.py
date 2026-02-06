@@ -131,23 +131,23 @@ def _matches_perm(mask: Any, rule: Dict[str, Any]) -> bool:
         return str(pm).lower() in s.lower()
 
 
-def apply_rules_df(df: pd.DataFrame, rules: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def apply_rules_df(df: pd.DataFrame, rules: List[Dict[str, Any]], min_severity: str | None = None) -> List[Dict[str, Any]]:
     # normalize expected columns and types
     for needed in ("folder_path", "ace_name", "ace_sid", "ace_mask", "ace_inherited", "ace_raw"):
         if needed not in df.columns:
             df[needed] = None
 
     df = df.copy()
-    df["folder_path"] = df["folder_path"].fillna("").astype(str)
-    df["ace_name"] = df["ace_name"].fillna("").astype(str)
-    df["ace_sid"] = df["ace_sid"].fillna("").astype(str)
-    df["ace_mask"] = df["ace_mask"].fillna("").astype(str)
-    df["ace_inherited"] = df["ace_inherited"].fillna(False).astype(bool)
+    df["folder_path"] = df["folder_path"].fillna("").astype(str)  # type: ignore[pandas-stubs]
+    df["ace_name"] = df["ace_name"].fillna("").astype(str)  # type: ignore[pandas-stubs]
+    df["ace_sid"] = df["ace_sid"].fillna("").astype(str)  # type: ignore[pandas-stubs]
+    df["ace_mask"] = df["ace_mask"].fillna("").astype(str)  # type: ignore[pandas-stubs]
+    df["ace_inherited"] = df["ace_inherited"].fillna(False).astype(bool)  # type: ignore[pandas-stubs]
 
-    df["res_name"] = df.apply(resolve_name_from_row, axis=1).fillna("").astype(str)
+    df["res_name"] = df.apply(resolve_name_from_row, axis=1).fillna("").astype(str)  # type: ignore[pandas-stubs]
 
     # precompute folder-level aggregates
-    folder_counts = df.groupby("folder_path").size().to_dict()
+    folder_counts = df.groupby("folder_path").size().to_dict()  # type: ignore[pandas-stubs]
     # duplicates per folder+identity
     dup_map: Dict[str, Dict[str, int]] = {}
     for group in df.groupby(["folder_path", "res_name"]):
@@ -249,15 +249,22 @@ def apply_rules_df(df: pd.DataFrame, rules: List[Dict[str, Any]]) -> List[Dict[s
                 if not d.get(str(ace_name)):
                     continue
 
-            # passed rule
+            # passed rule (include severity for triage)
             matches.append({
                 "rule_id": rid,
+                "severity": rule.get("severity", "medium"),
                 "folder_path": folder,
                 "ace_name": ace_name,
                 "ace_sid": ace_sid,
                 "ace_mask": ace_mask,
                 "ace_inherited": ace_inh,
             })
+
+    # apply min_severity filter if requested
+    if min_severity:
+        ranks = {"low": 1, "medium": 2, "high": 3}
+        min_rank = ranks.get(str(min_severity).lower(), 0)
+        matches = [m for m in matches if ranks.get(str(m.get("severity", "medium")).lower(), 0) >= min_rank]
 
     return matches
 
@@ -270,6 +277,8 @@ if __name__ == "__main__":
     p.add_argument("--run", "-r", type=Path, default=Path("out/parquet/run-20260202-124902"))
     p.add_argument("--rules", "-R", type=Path, default=RULES_PATH)
     p.add_argument("--out", "-o", type=Path, default=None, help="Output CSV path for rule matches")
+    p.add_argument("--min-severity", "-m", choices=["low", "medium", "high"], default=None,
+                   help="Minimum severity to include in output (low|medium|high)")
     args = p.parse_args()
 
     rules = load_rules(args.rules)
@@ -280,16 +289,16 @@ if __name__ == "__main__":
     dfs: List[pd.DataFrame] = []
     for f in files:
         try:
-            df = pd.read_parquet(f)
+            df = pd.read_parquet(f)  # type: ignore[pandas-stubs]
             df.columns = [c.lower() for c in df.columns]
-            dfs.append(df)
+            dfs.append(df)  # type: ignore[pandas-stubs]
         except Exception:
             continue
     if not dfs:
         print("No parquet content")
         raise SystemExit(1)
-    df = pd.concat(dfs, ignore_index=True)
-    matches = apply_rules_df(df, rules)
+    df = pd.concat(dfs, ignore_index=True)  # type: ignore[pandas-stubs]
+    matches = apply_rules_df(df, rules, min_severity=args.min_severity)
     print(f"Found {len(matches)} matches")
     if args.out:
         outp = args.out
@@ -301,6 +310,6 @@ if __name__ == "__main__":
         except Exception:
             # fallback: write minimal CSV
             with outp.open("w", encoding="utf-8", newline="") as fh:
-                fh.write("rule_id,folder_path,ace_name,ace_sid,ace_mask,ace_inherited\n")
+                fh.write("rule_id,severity,folder_path,ace_name,ace_sid,ace_mask,ace_inherited\n")
                 for m in matches:
-                    fh.write(','.join([str(m.get(k, '')) for k in ('rule_id','folder_path','ace_name','ace_sid','ace_mask','ace_inherited')]) + "\n")
+                    fh.write(','.join([str(m.get(k, '')) for k in ('rule_id','severity','folder_path','ace_name','ace_sid','ace_mask','ace_inherited')]) + "\n")

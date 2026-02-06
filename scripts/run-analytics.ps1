@@ -20,7 +20,9 @@ param(
     [string[]]$Checks = @('BroadPerms', 'Summarize'),
     [string]$Identity,
     [string]$Ruleset = (Join-Path $PSScriptRoot 'ruleset.json'),
-    [string]$Python = ''
+    [string]$Python = '',
+    [string]$MinSeverity = '',
+    [switch]$SeveritySplit
 )
 
 if (-not (Test-Path $RunPath)) { Throw "RunPath not found: $RunPath" }
@@ -98,7 +100,9 @@ if (Test-Path $parquetDir) {
 
     Write-Output "Invoking apply_rules with python: $pythonExe"
     try {
-        & $pythonExe "${PSScriptRoot}\apply_rules.py" --run $parquetDir --rules $Ruleset --out $ruleMatchesOut
+        $pyArgs = @("${PSScriptRoot}\apply_rules.py", "--run", $parquetDir, "--rules", $Ruleset, "--out", $ruleMatchesOut)
+        if ($MinSeverity -and $MinSeverity -ne '') { $pyArgs += @("--min-severity", $MinSeverity) }
+        & $pythonExe @pyArgs
         $exit = $LASTEXITCODE
         if ($exit -ne 0) {
             Write-Error "apply_rules.py exited with code $exit"
@@ -113,6 +117,23 @@ if (Test-Path $parquetDir) {
 }
 else {
     Write-Warning "Parquet directory not found; skipping apply_rules invocation: $parquetDir"
+}
+
+# Optionally split matches by severity into separate CSVs
+if ($SeveritySplit -and (Test-Path $ruleMatchesOut)) {
+    try {
+        $rows = Import-Csv $ruleMatchesOut
+        $groups = $rows | Group-Object -Property severity
+        foreach ($g in $groups) {
+            $sev = $g.Name
+            $file = Join-Path $OutDir ("rule_matches_{0}.csv" -f $sev)
+            $g.Group | Export-Csv -Path $file -NoTypeInformation -Encoding UTF8
+            Write-Output "Wrote severity split: $file"
+        }
+    }
+    catch {
+        Write-Warning ("Failed to split rule_matches by severity: {0}" -f $_)
+    }
 }
 
 Write-Output "Run analytics complete. Outputs in: $OutDir"
