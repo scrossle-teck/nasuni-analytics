@@ -71,7 +71,13 @@ if ($Ruleset -and (Test-Path $Ruleset)) {
     catch { Write-Warning ("Failed to read ruleset {0}: {1}" -f $Ruleset, $_); $rules = $null }
 }
 
+$JsonDepth = 20
 foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
+    # skip known non-ACL artifacts (schema files, indexes)
+    if ($f.Name -match '(?i)forensic-acl.*schema\.json' -or $f.Name -match '(?i)schema' -and $f.Name -match '(?i)com\.teckcominco') {
+        Write-Output "Skipping non-ACL JSON artifact: $($f.Name)"
+        continue
+    }
     try { $json = Get-Content -Raw -Path $f.FullName | ConvertFrom-Json -Depth 10 }
     catch { Write-Warning "Failed to parse $($f.FullName): $_"; continue }
 
@@ -163,7 +169,7 @@ foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
                         ace_mask      = $aceMask
                         ace_inherited = $aceInherited
                         matched_rules = ($matchedRuleIds -join ',')
-                        ace_raw       = ($ace | ConvertTo-Json -Depth 5 -Compress)
+                        ace_raw       = ($ace | ConvertTo-Json -Depth $JsonDepth -Compress)
                     })
             }
         }
@@ -242,7 +248,7 @@ foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
                         ace_mask      = $aceMask
                         ace_inherited = $aceInherited
                         matched_rules = ($matchedRuleIds -join ',')
-                        ace_raw       = ($ace | ConvertTo-Json -Depth 5 -Compress)
+                        ace_raw       = ($ace | ConvertTo-Json -Depth $JsonDepth -Compress)
                     })
             }
         }
