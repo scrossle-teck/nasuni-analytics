@@ -37,6 +37,7 @@ The analysis scripts produce and expect the following canonical columns (lowerca
 - `folder_path`, `ace_name`, `ace_sid`, `ace_mask`, `ace_inherited`, `ace_raw`
 
 Notes:
+
 - The ingestion pipeline (`scripts/ingest_duckdb.py`) maps `UncPath`/`SharePath` -> `folder_path` and `Access`/`Identity`/`Rights` -> `ace_name`/`ace_mask` when present.
 - PowerShell scripts were updated to parse JSON with `-Depth 20` to avoid truncated `ace_raw` JSON when serializing/deserializing nested ACE objects.
 
@@ -64,8 +65,9 @@ Agents should assume these columns exist or use the script helpers that normaliz
 - `scripts/find_everyone_full_control.py` — extract ACEs where `Everyone` has FullControl and write `out/analysis/everyone_full_control.csv`.
 - `scripts/find_sensitive_shares.py` — find folders whose paths match sensitive keywords (HR, Payroll, Finance, Legal, PII, Health, SOX, etc.), detect broad ACEs, exclude expected admin/service principals, and write `out/analysis/sensitive_shares_broad_perms.csv`.
 - `scripts/find_shares_missing_admin_full.py` — report folders that do not have an admin identity with FullControl (writes `out/analysis/shares_missing_admin_full.csv`). Recognizes appliance root SID and SYSTEM SIDs.
- 
+
 PowerShell scripts updated for schema parity (examples):
+
 - `scripts/find-broad-perms.ps1`, `scripts/find-accessible-by.ps1`, `scripts/find-missing-admins.ps1` — now recognize `Access` top-level lists and map `Identity`/`Rights`/`IsInherited` to canonical fields.
 - `scripts/summarize-run.ps1`, `scripts/inspect_json.ps1`, `scripts/check_ace_conditions.ps1` — updated to use `-Depth 20` and to prefer `UncPath`/`SharePath`/`ShareName` when deriving `folder_path`.
 - `scripts/analysis_broad_perms.py` — exploratory/aggregation analyses for broad permissions (identity frequency, folder counts).
