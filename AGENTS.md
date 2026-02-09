@@ -2,6 +2,8 @@
 
 Purpose: provide a concise reference for agents to quickly understand the repository state, where to find documentation and outputs, what each script does, and which artifacts should be primed into context when loading the repo.
 
+- **Updated 2026-02-09:** Ingest pipeline records additional provenance metadata and canonical `folder_path`; PowerShell scripts parse JSON at depth 20; DuckDB query runner and SQL examples were added.
+
 --
 
 ## Priming checklist (first actions for a fresh agent)

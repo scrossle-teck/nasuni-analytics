@@ -4,6 +4,8 @@
 
 - **Purpose:** Store and analyze point-in-time forensic snapshots of Nasuni Edge Appliances to surface security and permission insights across a large estate (~1PB scanned).
 
+- **Updated 2026-02-09:** Added metadata-first ingestion, increased PowerShell JSON depth to 20, and added DuckDB query artifacts for run analysis.
+
 ## Dataset
 
 - **Snapshot files:** JSON folder ACL exports located under [runs/run-20260202-124902/folderacls/](runs/run-20260202-124902/folderacls/)
