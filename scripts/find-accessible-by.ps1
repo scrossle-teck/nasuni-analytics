@@ -34,7 +34,7 @@ function Find-AclNodes([object]$node) {
     if ($node -is [System.Collections.IDictionary]) {
         foreach ($kv in $node.GetEnumerator()) {
             $k = $kv.Key; $v = $kv.Value
-            if ($k -match '^(acl|acls|aces|aclList)$' -and ($v -is [System.Collections.IEnumerable])) { [PSCustomObject]@{Node = $node; AclList = $v } }
+            if ($k -match '^(?i)(acl|acls|aces|aclList|access|accessList|rights|permissions)$' -and ($v -is [System.Collections.IEnumerable])) { [PSCustomObject]@{Node = $node; AclList = $v } }
             else { foreach ($child in Find-AclNodes $v) { $child } }
         }
     }
@@ -64,14 +64,13 @@ foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
 
     Write-Output "Parsed JSON properties: $($json.PSObject.Properties.Name -join ',')"
 
-    # Prefer top-level 'acl' if present
-    if ($json.PSObject.Properties.Name -contains 'acl' -and ($json.acl -is [System.Collections.IEnumerable])) {
+    # Prefer top-level ACL-like properties if present
+    $topAclProp = $json.PSObject.Properties.Name | Where-Object { $_ -match '^(?i)(acl|acls|aces|aclList|access|accessList|rights|permissions)$' } | Select-Object -First 1
+    if ($topAclProp -and ($json.$topAclProp -is [System.Collections.IEnumerable])) {
         Write-Output "Found top-level ACL in $($f.FullName)"
-        $aclList = $json.acl
+        $aclList = $json.$topAclProp
         $folderPath = $null
-        if ($json.PSObject.Properties.Name -contains 'path') { $folderPath = $json.path }
-        if (-not $folderPath -and ($json.PSObject.Properties.Name -contains 'folder')) { $folderPath = $json.folder }
-        if (-not $folderPath -and ($json.PSObject.Properties.Name -contains 'name')) { $folderPath = $json.name }
+        foreach ($cand in @('UncPath', 'SharePath', 'ShareName', 'VolumeName', 'path', 'folder', 'name', 'folderPath', 'folder_path')) { if ($json.PSObject.Properties.Name -contains $cand) { $folderPath = $json.$cand; break } }
         if (-not $folderPath) { $folderPath = $f.FullName }
 
         foreach ($ace in $aclList) {
@@ -88,7 +87,12 @@ foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
             if ($aceObj -is [System.Management.Automation.PSObject] -or $aceObj -is [System.Collections.IDictionary]) {
                 if ($aceObj.PSObject.Properties.Name -contains 'sid') { $aceSid = $aceObj.sid }
             }
-            $aceInherited = if ($aceObj -is [System.Collections.IDictionary]) { $aceObj.inherited -eq $true } else { $false }
+            $aceInherited = $false
+            if ($aceObj -is [System.Management.Automation.PSObject] -or $aceObj -is [System.Collections.IDictionary]) {
+                if ($aceObj.PSObject.Properties.Name -contains 'inherited') { $aceInherited = $aceObj.inherited -eq $true }
+                elseif ($aceObj.PSObject.Properties.Name -contains 'IsInherited') { $aceInherited = $aceObj.IsInherited -eq $true }
+                elseif ($aceObj.PSObject.Properties.Name -contains 'isInherited') { $aceInherited = $aceObj.isInherited -eq $true }
+            }
             if ($aceInherited -and -not $IncludeInherited) { continue }
 
             # Determine identity patterns: if Identity matches a rule id, use its identity_patterns or global admin list
@@ -128,14 +132,19 @@ foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
     foreach ($nodeInfo in Find-AclNodes $json) {
         $node = $nodeInfo.Node; $aclList = $nodeInfo.AclList
         $folderPath = $null
-        foreach ($cand in @('path', 'folder', 'name', 'folderPath', 'folder_path')) { if ($node.PSObject.Properties.Name -contains $cand) { $folderPath = $node.$cand; break } }
+        foreach ($cand in @('UncPath', 'SharePath', 'ShareName', 'VolumeName', 'path', 'folder', 'name', 'folderPath', 'folder_path')) { if ($node.PSObject.Properties.Name -contains $cand) { $folderPath = $node.$cand; break } }
         if (-not $folderPath) { $folderPath = $f.FullName }
 
         foreach ($ace in $aclList) {
             $aceObj = $ace
             $aceName = if ($aceObj -is [System.Collections.IDictionary]) { $aceObj.name -or $aceObj.displayName -or $aceObj.identity -or '' } else { '' }
             $aceSid = if ($aceObj -is [System.Collections.IDictionary]) { $aceObj.sid -or '' } else { '' }
-            $aceInherited = if ($aceObj -is [System.Collections.IDictionary]) { $aceObj.inherited -eq $true } else { $false }
+            $aceInherited = $false
+            if ($aceObj -is [System.Collections.IDictionary]) {
+                if ($aceObj.PSObject.Properties.Name -contains 'inherited') { $aceInherited = $aceObj.inherited -eq $true }
+                elseif ($aceObj.PSObject.Properties.Name -contains 'IsInherited') { $aceInherited = $aceObj.IsInherited -eq $true }
+                elseif ($aceObj.PSObject.Properties.Name -contains 'isInherited') { $aceInherited = $aceObj.isInherited -eq $true }
+            }
             if ($aceInherited -and -not $IncludeInherited) { continue }
 
             # Determine identity patterns: support rule ids and admin list

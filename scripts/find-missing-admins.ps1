@@ -25,17 +25,20 @@ function Find-AclNodes([object]$node) {
     if ($node -is [System.Collections.IDictionary]) {
         foreach ($kv in $node.GetEnumerator()) {
             $k = $kv.Key; $v = $kv.Value
-            if ($k -match '^(acl|acls|aces|aclList)$' -and ($v -is [System.Collections.IEnumerable])) { [PSCustomObject]@{Node = $node; AclList = $v } }
+            if ($k -match '^(?i)(acl|acls|aces|aclList|access|accessList|rights|permissions)$' -and ($v -is [System.Collections.IEnumerable])) { [PSCustomObject]@{Node = $node; AclList = $v } }
             else { foreach ($child in Find-AclNodes $v) { $child } }
         }
     }
     elseif ($node -is [System.Collections.IEnumerable] -and -not ($node -is [string])) { foreach ($item in $node) { foreach ($child in Find-AclNodes $item) { $child } } }
 }
 
+# JSON depth for parsing
+$JsonDepth = 20
+
 # load ruleset and find rule
 $rule = $null
 if ($Ruleset -and (Test-Path $Ruleset)) {
-    try { $rs = Get-Content -Raw -Path $Ruleset | ConvertFrom-Json -Depth 5 }
+    try { $rs = Get-Content -Raw -Path $Ruleset | ConvertFrom-Json -Depth $JsonDepth }
     catch { Write-Warning ("Failed to read ruleset {0}: {1}" -f $Ruleset, $_); $rs = $null }
     if ($rs -and $rs.rules) { $rule = $rs.rules | Where-Object { $_.id -ieq $RuleId } }
 }
@@ -45,19 +48,20 @@ if (-not $rule) { Throw "Rule not found in ruleset: $RuleId" }
 $out = [System.Collections.Generic.List[object]]::new()
 
 foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
-    try { $json = Get-Content -Raw -Path $f.FullName | ConvertFrom-Json -Depth 10 }
+    try { $json = Get-Content -Raw -Path $f.FullName | ConvertFrom-Json -Depth $JsonDepth }
     catch { Write-Warning "Failed to parse $($f.FullName): $_"; continue }
 
     # find ACL list(s)
     $aclLists = @()
     if ($json.PSObject.Properties.Name -contains 'acl' -and ($json.acl -is [System.Collections.IEnumerable])) { $aclLists += , @{List = $json.acl; Node = $json } }
+    if ($json.PSObject.Properties.Name -contains 'Access' -and ($json.Access -is [System.Collections.IEnumerable])) { $aclLists += , @{List = $json.Access; Node = $json } }
     foreach ($nodeInfo in (Find-AclNodes $json)) { $aclLists += , @{List = $nodeInfo.AclList; Node = $nodeInfo.Node } }
 
     foreach ($entry in $aclLists) {
         $aclList = $entry.List; $node = $entry.Node
         # deduce folder path
         $folderPath = $null
-        foreach ($cand in @('path', 'folder', 'name', 'folderPath', 'folder_path')) { if ($node.PSObject.Properties.Name -contains $cand) { $folderPath = $node.$cand; break } }
+        foreach ($cand in @('UncPath', 'SharePath', 'ShareName', 'VolumeName', 'path', 'folder', 'name', 'folderPath', 'folder_path')) { if ($node.PSObject.Properties.Name -contains $cand) { $folderPath = $node.$cand; break } }
         if (-not $folderPath) { $folderPath = $f.FullName }
 
         $found = @()
@@ -78,7 +82,9 @@ foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
             if ($aceObj.PSObject.Properties.Name -contains 'mask') { $aceMask = $aceObj.mask }
             elseif ($aceObj.PSObject.Properties.Name -contains 'rights') { $aceMask = $aceObj.rights }
 
-            if ($aceObj.PSObject.Properties.Name -contains 'inherited') { $aceInherited = $aceObj.inherited -eq $true } else { $aceInherited = $false }
+            if ($aceObj.PSObject.Properties.Name -contains 'inherited') { $aceInherited = $aceObj.inherited -eq $true }
+            elseif ($aceObj.PSObject.Properties.Name -contains 'IsInherited') { $aceInherited = $aceObj.IsInherited -eq $true }
+            else { $aceInherited = $false }
             if ($aceInherited -and -not $IncludeInherited) { continue }
 
             # determine identity patterns to check: support match_admin_identities + top-level admin list
