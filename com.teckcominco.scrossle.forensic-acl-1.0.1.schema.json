@@ -1,0 +1,53 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "urn:com:teckcominco:scrossle:forensic-acl:1.0.1",
+    "title": "Forensic ACL Record",
+    "schemaVersion": "1.0.1",
+    "type": "array",
+    "items": {
+        "type": "object",
+        "properties": {
+            "UncPath": { "type": "string" },
+            "CollectedUtc": { "type": "string", "format": "date-time" },
+            "CollectionHost": { "type": "string" },
+            "ApplianceHostname": { "type": "string" },
+            "ApplianceDescription": { "type": "string" },
+            "ApplianceSerialNumber": { "type": "string" },
+            "VolumeName": { "type": "string" },
+            "VolumeGuid": { "type": "string" },
+            "ShareName": { "type": "string" },
+            "SharePath": { "type": "string" },
+            "Collector": { "type": "string" },
+            "Owner": { "type": "string" },
+            "Sddl": { "type": "string" },
+            "Attributes": { "type": "array", "items": { "type": "string" } },
+            "Access": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "Identity": { "type": "string" },
+                        "Rights": { "type": "string" },
+                        "Type": { "type": "string" },
+                        "IsInherited": { "type": "boolean" },
+                        "InheritanceFlags": { "type": "string" },
+                        "PropagationFlags": { "type": "string" }
+                    }
+                }
+            },
+            "FingerprintSha256": { "type": "string" },
+            "CollectionSha256": { "type": "string" }
+        },
+        "required": [
+            "UncPath",
+            "CollectedUtc",
+            "CollectionHost",
+            "Collector",
+            "Owner",
+            "Sddl",
+            "Access",
+            "FingerprintSha256",
+            "CollectionSha256"
+        ]
+    }
+}
