@@ -48,20 +48,39 @@ def extract_acls_from_json(data: Any, source_file: str) -> Iterable[Dict[str, An
             for item in obj:
                 yield from find_acl_nodes(item)
 
+    def _get_ci(d: Dict[str, Any], key: str):
+        for k, v in d.items():
+            if k.lower() == key.lower():
+                return v
+        return None
+
+    def _last_path_component(p: str) -> str:
+        if not p:
+            return ''
+        s = str(p).rstrip('/\\')
+        parts = [seg for sep in ('\\', '/') for seg in s.split(sep)]
+        # filter out empty parts and return last
+        parts = [p for p in parts if p]
+        return parts[-1] if parts else ''
+
     for node in find_acl_nodes(data):
-        # find path in node or its parent-like keys
-        folder_path = None
-        # lookup folder path case-insensitively; support the new schema's UncPath/SharePath and common variants
-        for candidate in ("uncpath", "sharepath", "sharename", "volumename", "path", "folder", "name", "folderPath", "folder_path"):
-            for k in node.keys():
-                if k.lower() == candidate.lower():
-                    folder_path = node.get(k)
-                    break
-            if folder_path:
-                break
-        # if not found, set to source file path
-        if not folder_path:
-            folder_path = source_file
+        # collect metadata fields (case-insensitive lookup)
+        unc_path = _get_ci(node, 'UncPath') or _get_ci(node, 'uncpath') or _get_ci(node, 'path')
+        share_path = _get_ci(node, 'SharePath') or _get_ci(node, 'sharepath') or _get_ci(node, 'ShareName') or _get_ci(node, 'sharename')
+        appliance_hostname = _get_ci(node, 'ApplianceHostname') or _get_ci(node, 'appliancehostname')
+
+        # compute canonical folder_path: ApplianceHostname + SharePath + last(UncPath)
+        last_comp = _last_path_component(unc_path)
+        canonical_path = None
+        if appliance_hostname and share_path and last_comp:
+            canonical_path = f"{appliance_hostname}::${{share_path}}::${{last_comp}}"
+        elif unc_path:
+            canonical_path = unc_path
+        else:
+            canonical_path = source_file
+
+        # keep original unc_path too
+        folder_path = canonical_path
 
         # find the ACL list value
         acl_list = None
@@ -102,15 +121,47 @@ def extract_acls_from_json(data: Any, source_file: str) -> Iterable[Dict[str, An
                 ace_type = pick('type', 'ace_type', 'acetype')
                 mask = pick('mask', 'rights', 'permissions', 'access', 'accessmask')
                 inherited = pick('inherited', 'isInherited', 'isinherited', 'IsInherited')
+
+            # collect top-level metadata to include in each row
+            collected_utc = _get_ci(node, 'CollectedUtc') or _get_ci(node, 'collectedutc')
+            collection_host = _get_ci(node, 'CollectionHost') or _get_ci(node, 'collectionhost')
+            collector = _get_ci(node, 'Collector') or _get_ci(node, 'collector')
+            appliance_description = _get_ci(node, 'ApplianceDescription') or _get_ci(node, 'appliancedescription')
+            appliance_serial = _get_ci(node, 'ApplianceSerialNumber') or _get_ci(node, 'applianceserialnumber')
+            volume_name = _get_ci(node, 'VolumeName') or _get_ci(node, 'volumename')
+            volume_guid = _get_ci(node, 'VolumeGuid') or _get_ci(node, 'volumeguid')
+            share_name = _get_ci(node, 'ShareName') or _get_ci(node, 'sharename')
+            attributes = _get_ci(node, 'Attributes') or _get_ci(node, 'attributes')
+            owner = _get_ci(node, 'Owner') or _get_ci(node, 'owner')
+            sddl = _get_ci(node, 'Sddl') or _get_ci(node, 'sddl')
+            fingerprint = _get_ci(node, 'FingerprintSha256') or _get_ci(node, 'fingerprintsha256')
+            collection_sha = _get_ci(node, 'CollectionSha256') or _get_ci(node, 'collectionsha256')
+
             yield {
                 "source_file": source_file,
                 "folder_path": folder_path,
+                "unc_path": unc_path,
                 "ace_sid": sid,
                 "ace_name": name,
                 "ace_type": ace_type,
                 "ace_mask": mask,
                 "ace_inherited": inherited,
                 "ace_raw": json.dumps(ace, ensure_ascii=False) if not isinstance(ace, str) else ace,
+                # metadata
+                "collected_utc": collected_utc,
+                "collection_host": collection_host,
+                "collector": collector,
+                "appliance_hostname": appliance_hostname,
+                "appliance_description": appliance_description,
+                "appliance_serial": appliance_serial,
+                "volume_name": volume_name,
+                "volume_guid": volume_guid,
+                "share_name": share_name,
+                "attributes": attributes,
+                "owner": owner,
+                "sddl": sddl,
+                "fingerprint_sha256": fingerprint,
+                "collection_sha256": collection_sha,
             }
 
 
