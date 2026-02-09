@@ -30,8 +30,9 @@ if (-not (Test-Path $OutDir)) { New-Item -ItemType Directory -Path $OutDir -Forc
 
 # Load ruleset if present
 $rules = $null
+$JsonDepth = 20
 if ($Ruleset -and (Test-Path $Ruleset)) {
-    try { $rules = Get-Content -Raw -Path $Ruleset | ConvertFrom-Json -Depth 5 }
+    try { $rules = Get-Content -Raw -Path $Ruleset | ConvertFrom-Json -Depth $JsonDepth }
     catch { Write-Warning ("Failed to read ruleset {0}: {1}" -f $Ruleset, $_); $rules = $null }
 }
 
