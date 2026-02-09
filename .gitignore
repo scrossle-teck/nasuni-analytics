@@ -6,8 +6,8 @@ __pycache__/
 *.csv
 folderacls*/
 runs/
+old/
 out/
 results*/
 pester-debug/
 .pytest_cache/
-
