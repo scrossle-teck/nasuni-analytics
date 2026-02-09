@@ -2,13 +2,19 @@ param(
     [Parameter(Mandatory = $true)][string]$Path
 )
 
+$JsonDepth = 20
+
 $s = Get-Content -Raw -Path $Path
-$j = $s | ConvertFrom-Json
-$ace = $j.acl[0]
-Write-Output "aceName: $($ace.name)"
+$j = $s | ConvertFrom-Json -Depth $JsonDepth
+# support either top-level 'acl' or 'Access'
+if ($j.PSObject.Properties.Name -contains 'acl') { $ace = $j.acl[0] }
+elseif ($j.PSObject.Properties.Name -contains 'Access') { $ace = $j.Access[0] }
+else { Write-Warning 'No ACL list found'; exit 1 }
+
+Write-Output "aceName: $($ace.name -or $ace.identity)"
 Write-Output "aceSid: $($ace.sid)"
-Write-Output "aceMask: $($ace.mask)"
-Write-Output "aceInherited: $($ace.inherited)"
+Write-Output "aceMask: $($ace.mask -or $ace.rights)"
+Write-Output "aceInherited: $($ace.inherited -or $ace.IsInherited -or $ace.isInherited)"
 
 $targets = @('Domain Users', 'Everyone', 'BUILTIN\\Users')
 foreach ($t in $targets) {

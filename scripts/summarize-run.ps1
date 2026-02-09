@@ -15,13 +15,16 @@ param(
 
 Set-StrictMode -Version Latest
 
+
 function Get-FolderAclFiles { param([string]$runPath) $fa = Join-Path $runPath 'folderacls'; if (Test-Path $fa) { Get-ChildItem -Path $fa -Filter *.json -File } else { Get-ChildItem -Path $runPath -Recurse -Include *.json -File | Where-Object { $_.FullName -match 'folderacls' } } }
+
+$JsonDepth = 20
 
 $totalFiles = 0; $totalAces = 0; $uniqueFolders = [System.Collections.Generic.HashSet[string]]::new(); $uniqueSids = [System.Collections.Generic.HashSet[string]]::new()
 
 foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
     $totalFiles++
-    try { $json = Get-Content -Raw -Path $f.FullName | ConvertFrom-Json -Depth 10 }
+    try { $json = Get-Content -Raw -Path $f.FullName | ConvertFrom-Json -Depth $JsonDepth }
     catch { Write-Warning "Failed to parse $($f.FullName): $_"; continue }
 
     # simple traversal to find ACL lists
@@ -37,7 +40,7 @@ foreach ($f in Get-FolderAclFiles -runPath $RunPath) {
     try {
         $parsed = $json
         if ($parsed -is [System.Collections.IDictionary]) {
-            foreach ($cand in @('path', 'folder', 'name', 'folderPath', 'folder_path')) { if ($parsed.PSObject.Properties.Name -contains $cand) { $uniqueFolders.Add([string]$parsed.$cand) | Out-Null } }
+            foreach ($cand in @('UncPath', 'SharePath', 'ShareName', 'VolumeName', 'path', 'folder', 'name', 'folderPath', 'folder_path')) { if ($parsed.PSObject.Properties.Name -contains $cand) { $uniqueFolders.Add([string]$parsed.$cand) | Out-Null } }
         }
     }
     catch { }
