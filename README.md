@@ -12,7 +12,15 @@
 
 ## Schema
 
-- **JSON Schema:** The forensic ACL JSON files conform to [com.teckcominco.scrossle.forensic-acl-1.0.0.schema.json](com.teckcominco.scrossle.forensic-acl-1.0.0.schema.json)
+- **JSON Schema:** The forensic ACL JSON files historically used [com.teckcominco.scrossle.forensic-acl-1.0.0.schema.json](com.teckcominco.scrossle.forensic-acl-1.0.0.schema.json). The repository now also supports the newer PascalCase variant `com.teckcominco.scrossle.forensic-acl-1.0.1.schema.json` where top-level path fields and ACL lists may use names such as `UncPath` (or `SharePath`/`ShareName`/`VolumeName`) and ACL lists appear under `Access` with ACE objects using `Identity`, `Rights`, and `IsInherited`.
+
+Mapping notes (what the scripts expect):
+
+- `UncPath` / `SharePath` / `ShareName` / `VolumeName` → `folder_path`
+- ACE fields: `Identity` → `ace_name`, `Rights` → `ace_mask`, `IsInherited` → `ace_inherited` (scripts also accept older fields `name`, `sid`, `mask`, `inherited`)
+- Scripts and the ingest pipeline normalize these into the canonical columns: `folder_path`, `ace_name`, `ace_sid`, `ace_mask`, `ace_inherited`, `ace_raw`.
+
+PowerShell note: PowerShell scripts now parse JSON with a `Depth` of 20 to avoid `ConvertTo-Json` truncation of nested ACE `ace_raw` payloads. If you write or edit scripts, use `$JsonDepth = 20` when serializing/deserializing ACEs.
 
 ## Analytics Goals
 
