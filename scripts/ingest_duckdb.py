@@ -51,8 +51,8 @@ def extract_acls_from_json(data: Any, source_file: str) -> Iterable[Dict[str, An
     for node in find_acl_nodes(data):
         # find path in node or its parent-like keys
         folder_path = None
-        # lookup folder path case-insensitively since many JSONs use capitalized keys like 'Path'
-        for candidate in ("path", "folder", "name", "folderPath", "folder_path"):
+        # lookup folder path case-insensitively; support the new schema's UncPath/SharePath and common variants
+        for candidate in ("uncpath", "sharepath", "sharename", "volumename", "path", "folder", "name", "folderPath", "folder_path"):
             for k in node.keys():
                 if k.lower() == candidate.lower():
                     folder_path = node.get(k)

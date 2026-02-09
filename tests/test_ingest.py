@@ -14,14 +14,23 @@ def make_sample_run(tmp_path: Path) -> Path:
     run_dir = tmp_path / "runs" / "run-test-1"
     folderacls = run_dir / "folderacls"
     folderacls.mkdir(parents=True, exist_ok=True)
-
-    sample = {
-        "path": "\\\\nasuni\\share\\folder1",
-        "acl": [
-            {"sid": "S-1-5-21-1000", "name": "Domain Users", "type": "allow", "mask": "FullControl", "inherited": False},
-            {"sid": "S-1-5-21-2000", "name": "Admins", "type": "allow", "mask": "Read", "inherited": False}
-        ]
-    }
+    # Use new schema (1.0.1): UncPath and Access with Identity/Rights/IsInherited
+    sample = [
+        {
+            "UncPath": "\\\\nasuni\\share\\folder1",
+            "CollectedUtc": "2026-02-09T12:00:00Z",
+            "CollectionHost": "host.example",
+            "Collector": "collector",
+            "Owner": "owner",
+            "Sddl": "S:...",
+            "Access": [
+                {"Identity": "Domain Users", "Rights": "FullControl", "Type": "allow", "IsInherited": False},
+                {"Identity": "Admins", "Rights": "Read", "Type": "allow", "IsInherited": False}
+            ],
+            "FingerprintSha256": "abc",
+            "CollectionSha256": "def"
+        }
+    ]
 
     sample_file = folderacls / "sample.json"
     with open(sample_file, "w", encoding="utf-8") as fh:
