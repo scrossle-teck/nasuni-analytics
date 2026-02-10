@@ -79,7 +79,11 @@ def extract_acls_from_json(data: Any, source_file: str) -> Iterable[Dict[str, An
                 return s.strip().lstrip('\\/').rstrip('\\/')
 
             sp = _strip_slashes(str(share_path))
-            lc = _strip_slashes(str(last_comp))
+            # Ensure we only use the final path segment from `last_comp` in case
+            # it contains a longer path (trim leading components).
+            lc_raw = str(last_comp) if last_comp is not None else ''
+            lc = lc_raw.split('\\')[-1].split('/')[-1]
+            lc = _strip_slashes(lc)
             canonical_path = f"\\\\{appliance_hostname}\\{sp}\\{lc}"
         elif unc_path:
             canonical_path = unc_path
