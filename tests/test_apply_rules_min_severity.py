@@ -27,9 +27,9 @@ def test_min_severity_filters_out_lower_severity():
     ]
 
     rows = [
-        make_row('\\f\s\a', 'alice', 'S-1-5-21-1', 'Read'),
-        make_row('\\f\s\b', 'bob', 'S-1-5-21-2', 'Read'),
-        make_row('\\f\s\e', 'eve', 'S-1-5-21-3', 'Read'),
+        make_row(r'\\f\s\a', 'alice', 'S-1-5-21-1', 'Read'),
+        make_row(r'\\f\s\b', 'bob', 'S-1-5-21-2', 'Read'),
+        make_row(r'\\f\s\e', 'eve', 'S-1-5-21-3', 'Read'),
     ]
     df = pd.DataFrame(rows)
 
@@ -46,7 +46,7 @@ def test_min_severity_low_all_included():
         {'id': 'r_low', 'identity_patterns': ['alice'], 'severity': 'low'},
         {'id': 'r_high', 'identity_patterns': ['bob'], 'severity': 'high'},
     ]
-    rows = [make_row('\\f\s\a', 'alice', 'S-1-5-21-1', 'Read'), make_row('\\f\s\b', 'bob', 'S-1-5-21-2', 'Read')]
+    rows = [make_row(r'\\f\s\a', 'alice', 'S-1-5-21-1', 'Read'), make_row(r'\\f\s\b', 'bob', 'S-1-5-21-2', 'Read')]
     df = pd.DataFrame(rows)
     matches = apply_rules_df(df, rules, min_severity='low')
     ids = {m['rule_id'] for m in matches}
