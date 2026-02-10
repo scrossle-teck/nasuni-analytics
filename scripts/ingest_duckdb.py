@@ -70,7 +70,8 @@ def extract_acls_from_json(data: Any, source_file: str) -> Iterable[Dict[str, An
         appliance_hostname = _get_ci(node, 'ApplianceHostname') or _get_ci(node, 'appliancehostname')
 
         # compute canonical folder_path: ApplianceHostname + SharePath + last(UncPath)
-        last_comp = _last_path_component(unc_path)
+        # tolerate None by coercing to empty string before extracting last segment
+        last_comp = _last_path_component(unc_path or '')
         canonical_path = None
         if appliance_hostname and share_path and last_comp:
             # Normalize components and build a standard UNC path:

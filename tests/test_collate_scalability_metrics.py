@@ -6,7 +6,9 @@ from pathlib import Path
 
 def load_module(path: Path):
     spec = importlib.util.spec_from_file_location("collate", str(path))
+    assert spec is not None
     mod = importlib.util.module_from_spec(spec)
+    assert mod is not None
     spec.loader.exec_module(mod)  # type: ignore
     return mod
 

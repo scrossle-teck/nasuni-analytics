@@ -10,13 +10,16 @@ outs = {
 
 with open(inpath, newline='', encoding='utf-8') as inf:
     rdr = csv.DictReader(inf)
+    # DictReader.fieldnames may be None; coerce to a list for DictWriter
+    fieldnames = list(rdr.fieldnames or [])
     writers = {}
     files = {}
     for sev, path in outs.items():
         f = open(path, 'w', newline='', encoding='utf-8')
         files[sev] = f
-        writers[sev] = csv.DictWriter(f, fieldnames=rdr.fieldnames)
-        writers[sev].writeheader()
+        writers[sev] = csv.DictWriter(f, fieldnames=fieldnames)
+        if fieldnames:
+            writers[sev].writeheader()
 
     for row in rdr:
         sev = (row.get('severity') or '').lower()
