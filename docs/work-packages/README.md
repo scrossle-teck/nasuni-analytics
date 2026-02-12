@@ -28,26 +28,26 @@ These packages implement the architecture described in:
 
 ### Scale enablers
 
-4. WP03 — ACL canonicalization + fingerprint tables
-5. WP04 — DuckDB-first rule execution (avoid full pandas loads)
+1. WP03 — ACL canonicalization + fingerprint tables
+2. WP04 — DuckDB-first rule execution (avoid full pandas loads)
 
 ### Identity + blast radius
 
-6. WP05 — AD snapshot ingest (principals + membership edges)
-7. WP06 — Membership closure (transitive group expansion)
-8. WP07 — Blast-radius enrichment for findings
+1. WP05 — AD snapshot ingest (principals + membership edges)
+2. WP06 — Membership closure (transitive group expansion)
+3. WP07 — Blast-radius enrichment for findings
 
 ### Effective access
 
-9. WP08 — Effective NTFS access MVP (“view as user”)
+1. WP08 — Effective NTFS access MVP (“view as user”)
 
 ### Deltas + drift
 
-10. WP09 — Run-to-run diffs and delta processing
+1. WP09 — Run-to-run diffs and delta processing
 
 ### Hardening
 
-11. WP10 — QA, performance, and operationalization
+1. WP10 — QA, performance, and operationalization
 
 ## Work packages
 
