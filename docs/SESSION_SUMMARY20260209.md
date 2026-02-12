@@ -21,6 +21,7 @@ Notes / next steps:
 - Integrate provenance fields into downstream aggregated analysis outputs (rule engine outputs, sensitive-folder prioritization).
 - Add changelog entry and update per-script docs under `scripts/docs/` to reflect schema parity and new metadata fields.
 - Optionally re-run `scripts/apply_rules.py` against the new Parquet run to regenerate `out/analysis/rule_matches.csv` with the canonical `folder_path`.
+- See `docs/PROJECT_GUIDELINES_acl_inventory_and_effective_access.md` for the forward-looking plan (AD identity snapshots, ACL fingerprints, blast radius, effective access simulation).
 
 ---
 
