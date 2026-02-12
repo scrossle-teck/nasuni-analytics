@@ -16,6 +16,7 @@
 Implementation breakdown:
 
 - See `docs/work-packages/README.md` for the multi-day work packages.
+- See `docs/work-packages/addendums/README.md` for per-work-package addendums (what’s already built + steps to reach acceptance).
 
 ---
 

@@ -52,6 +52,7 @@ Agents should assume these columns exist or use the script helpers that normaliz
 - `docs/acl_vulnerability_patterns.md` — canonical vulnerability patterns, detection hints, and which identities are treated as admin/service principals.
 - `docs/PROJECT_GUIDELINES_acl_inventory_and_effective_access.md` — living architecture guideline for ACL inventory + AD identity snapshots + risk analytics + effective access simulation.
 - `docs/work-packages/README.md` — multi-day work breakdown for implementing the project guideline.
+- `docs/work-packages/addendums/README.md` — per-work-package addendums describing what’s already built and what remains to reach acceptance.
 
 ## Primary outputs (analysis CSVs / Parquet)
 
