@@ -6,6 +6,12 @@
 
 - **Updated 2026-02-09:** Added metadata-first ingestion, increased PowerShell JSON depth to 20, and added DuckDB query artifacts for run analysis.
 
+## Docs (start here)
+
+- Project guideline / architecture: `docs/PROJECT_GUIDELINES_acl_inventory_and_effective_access.md`
+- Implementation work breakdown: `docs/work-packages/README.md`
+- Vulnerability patterns reference: `docs/acl_vulnerability_patterns.md`
+
 ## Dataset
 
 - **Snapshot files:** JSON folder ACL exports located under [runs/run-20260202-124902/folderacls/](runs/run-20260202-124902/folderacls/)
