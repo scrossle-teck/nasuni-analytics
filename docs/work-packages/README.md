@@ -18,6 +18,17 @@ These packages implement the architecture described in:
   - Implementation notes
   - Suggested timeline (multi-day)
 
+## Addendums
+
+Addendums capture two things for each work package:
+
+1. What’s already completed in `nasuni-inventory` and `nasuni-analytics` that you can leverage.
+2. The concrete steps required to reach WP acceptance.
+
+Start here:
+
+- `docs/work-packages/addendums/README.md`
+
 ## Suggested execution order (high-level)
 
 ### Foundation
