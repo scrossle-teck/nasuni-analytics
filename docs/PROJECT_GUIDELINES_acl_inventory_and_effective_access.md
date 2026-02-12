@@ -13,6 +13,10 @@
 > - We can collect and persist ACL snapshot evidence from file servers / Nasuni exports.
 > - We want a dataset that other tools can build on long-term.
 
+Implementation breakdown:
+
+- See `docs/work-packages/README.md` for the multi-day work packages.
+
 ---
 
 ## 0) Glossary (shared language)
