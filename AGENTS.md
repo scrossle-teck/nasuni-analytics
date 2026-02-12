@@ -51,6 +51,7 @@ Agents should assume these columns exist or use the script helpers that normaliz
 - `docs/SESSION_SUMMARY_20260204.md` — session-level snapshot of what was produced on 2026-02-04 (current state summary).
 - `docs/acl_vulnerability_patterns.md` — canonical vulnerability patterns, detection hints, and which identities are treated as admin/service principals.
 - `docs/PROJECT_GUIDELINES_acl_inventory_and_effective_access.md` — living architecture guideline for ACL inventory + AD identity snapshots + risk analytics + effective access simulation.
+- `docs/work-packages/README.md` — multi-day work breakdown for implementing the project guideline.
 
 ## Primary outputs (analysis CSVs / Parquet)
 
