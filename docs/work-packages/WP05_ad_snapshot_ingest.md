@@ -46,12 +46,12 @@ Ingest an on-prem AD snapshot into Parquet tables so ACL evidence can be joined 
 
 ### Approach decision
 
-**Option A — PowerShell (AD module)**
+#### Option A — PowerShell (AD module)
 
 - Pros: straightforward in Microsoft shops.
 - Cons: may require Windows runners and RSAT.
 
-**Option B — Python (LDAP)**
+#### Option B — Python (LDAP)
 
 - Pros: cross-platform; lives in analytics repo.
 - Cons: more LDAP complexity.
